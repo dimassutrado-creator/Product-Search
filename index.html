@@ -164,7 +164,7 @@
                 <div class="text-[11px] text-slate-500 flex items-center gap-1.5">
                     <span>Kolom Acuan:</span>
                     <span class="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded border border-blue-200">
-                        <i class="fa-solid fa-star text-amber-500 mr-1 text-[9px]"></i>Kolom D (Name)
+                        <i class="fa-solid fa-star text-amber-500 mr-1 text-[9px]"></i>Name
                     </span>
                 </div>
             </div>
@@ -172,17 +172,50 @@
             <!-- Master Table -->
             <div class="flex-1 overflow-auto custom-scrollbar">
                 <table class="w-full text-left text-xs border-collapse">
-                    <thead class="bg-slate-100 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200 sticky top-0 z-10">
+                    <thead class="bg-slate-100 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200 sticky top-0 z-10 select-none">
                         <tr>
-                            <th class="py-3 px-4 w-14 text-center">Baris</th>
-                            <th class="py-3 px-4 w-40">Product Category</th>
-                            <th class="py-3 px-4 w-32">Type</th>
-                            <th class="py-3 px-4 w-36 font-mono">Internal Ref</th>
-                            <th class="py-3 px-4 font-bold text-blue-900 bg-blue-50/80 border-x border-blue-200">
-                                <i class="fa-solid fa-star text-amber-500 mr-1"></i>Name
+                            <th onclick="handleSort('row')" class="py-3 px-4 w-16 text-center cursor-pointer hover:bg-slate-200/80 transition" title="Klik untuk mengurutkan">
+                                <div class="flex items-center justify-center gap-1">
+                                    <span>Baris</span>
+                                    <i id="sort-icon-row" class="fa-solid fa-sort text-slate-400 text-[10px]"></i>
+                                </div>
                             </th>
-                            <th class="py-3 px-4 w-28">Unit of Measure</th>
-                            <th class="py-3 px-4 w-48">Valuation / Category</th>
+                            <th onclick="handleSort('category')" class="py-3 px-4 w-40 cursor-pointer hover:bg-slate-200/80 transition" title="Klik untuk mengurutkan">
+                                <div class="flex items-center justify-between gap-1">
+                                    <span>Product Category</span>
+                                    <i id="sort-icon-category" class="fa-solid fa-sort text-slate-400 text-[10px]"></i>
+                                </div>
+                            </th>
+                            <th onclick="handleSort('type')" class="py-3 px-4 w-32 cursor-pointer hover:bg-slate-200/80 transition" title="Klik untuk mengurutkan">
+                                <div class="flex items-center justify-between gap-1">
+                                    <span>Type</span>
+                                    <i id="sort-icon-type" class="fa-solid fa-sort text-slate-400 text-[10px]"></i>
+                                </div>
+                            </th>
+                            <th onclick="handleSort('ref')" class="py-3 px-4 w-36 font-mono cursor-pointer hover:bg-slate-200/80 transition" title="Klik untuk mengurutkan">
+                                <div class="flex items-center justify-between gap-1">
+                                    <span>Internal Ref</span>
+                                    <i id="sort-icon-ref" class="fa-solid fa-sort text-slate-400 text-[10px]"></i>
+                                </div>
+                            </th>
+                            <th onclick="handleSort('name')" class="py-3 px-4 font-bold text-blue-900 bg-blue-50/80 border-x border-blue-200 cursor-pointer hover:bg-blue-100/80 transition" title="Klik untuk mengurutkan">
+                                <div class="flex items-center justify-between gap-1">
+                                    <span><i class="fa-solid fa-star text-amber-500 mr-1"></i>Name</span>
+                                    <i id="sort-icon-name" class="fa-solid fa-sort text-blue-400 text-[10px]"></i>
+                                </div>
+                            </th>
+                            <th onclick="handleSort('uom')" class="py-3 px-4 w-28 cursor-pointer hover:bg-slate-200/80 transition" title="Klik untuk mengurutkan">
+                                <div class="flex items-center justify-between gap-1">
+                                    <span>Unit of Measure</span>
+                                    <i id="sort-icon-uom" class="fa-solid fa-sort text-slate-400 text-[10px]"></i>
+                                </div>
+                            </th>
+                            <th onclick="handleSort('valuation')" class="py-3 px-4 w-48 cursor-pointer hover:bg-slate-200/80 transition" title="Klik untuk mengurutkan">
+                                <div class="flex items-center justify-between gap-1">
+                                    <span>Valuation / Category</span>
+                                    <i id="sort-icon-valuation" class="fa-solid fa-sort text-slate-400 text-[10px]"></i>
+                                </div>
+                            </th>
                             <th class="py-3 px-4 w-16 text-center">Salin</th>
                         </tr>
                     </thead>
@@ -283,8 +316,13 @@
         ];
 
         let activeProducts = [...cleanSampleProductData];
+        let currentDisplayedProducts = [...cleanSampleProductData];
         let highlightedRowIndex = null;
         let selectedMode = 1; // Default Mode 1
+
+        // Table Sorting State
+        let currentSortColumn = null;
+        let currentSortDir = 'asc'; // 'asc' or 'desc'
 
         window.onload = function() {
             renderMasterTable(activeProducts);
@@ -317,6 +355,59 @@
                     circle.className = "w-5 h-5 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-[10px] font-bold shrink-0";
                 }
             }
+        }
+
+        // Table Column Sorting Logic
+        function handleSort(columnKey) {
+            if (currentSortColumn === columnKey) {
+                currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortColumn = columnKey;
+                currentSortDir = 'asc';
+            }
+
+            updateSortIcons();
+            applySortAndRender();
+        }
+
+        function updateSortIcons() {
+            const columns = ['row', 'category', 'type', 'ref', 'name', 'uom', 'valuation'];
+            columns.forEach(col => {
+                const icon = document.getElementById(`sort-icon-${col}`);
+                if (!icon) return;
+
+                if (col === currentSortColumn) {
+                    if (currentSortDir === 'asc') {
+                        icon.className = 'fa-solid fa-arrow-up-a-z text-blue-600 text-[11px]';
+                    } else {
+                        icon.className = 'fa-solid fa-arrow-down-z-a text-blue-600 text-[11px]';
+                    }
+                } else {
+                    icon.className = 'fa-solid fa-sort text-slate-400 text-[10px]';
+                }
+            });
+        }
+
+        function applySortAndRender() {
+            if (!currentSortColumn || !currentDisplayedProducts) return;
+
+            currentDisplayedProducts.sort((a, b) => {
+                let valA = a[currentSortColumn];
+                let valB = b[currentSortColumn];
+
+                if (typeof valA === 'number' && typeof valB === 'number') {
+                    return currentSortDir === 'asc' ? valA - valB : valB - valA;
+                }
+
+                valA = String(valA || '').toLowerCase();
+                valB = String(valB || '').toLowerCase();
+
+                if (valA < valB) return currentSortDir === 'asc' ? -1 : 1;
+                if (valA > valB) return currentSortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            renderMasterTable(currentDisplayedProducts, false);
         }
 
         // Sync with Google Sheet CSV
@@ -375,7 +466,15 @@
             }
         }
 
-        function renderMasterTable(data) {
+        function renderMasterTable(data, updateDisplayedState = true) {
+            if (updateDisplayedState) {
+                currentDisplayedProducts = [...data];
+                if (currentSortColumn) {
+                    applySortAndRender();
+                    return;
+                }
+            }
+
             const tbody = document.getElementById('masterTableBody');
             tbody.innerHTML = '';
 
