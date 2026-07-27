@@ -790,7 +790,7 @@
         }
 
         async function callGeminiReRank(userQuery, candidateItems, isBilingual) {
-            const apiKey = "";
+            const apiKey = 'AQ.Ab8RN6II3XCCsJkKgrGpY_N0EetemgHthl10Gt8v-gpIsYnGMw';
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
 
             const candidateListText = candidateItems.map(c => `[Baris ${c.row}] Ref: "${c.ref}" | Name: "${c.name}"`).join("\n");
