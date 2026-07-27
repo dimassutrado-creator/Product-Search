@@ -36,8 +36,8 @@
         <div class="flex items-center space-x-3">
             <!-- Connection Status -->
             <div id="connectionStatus" class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 rounded-lg text-xs font-medium">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span id="connectionText">Terhubung: Google Sheet Master</span>
+                <span id="statusIndicatorDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span id="connectionText">Memuat data lokal...</span>
             </div>
 
             <!-- Ganti Link Sheet Button -->
@@ -47,8 +47,8 @@
             </button>
 
             <!-- Refresh Data Button -->
-            <button onclick="syncGoogleSheetData()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-xs font-medium border border-slate-700 transition flex items-center gap-1.5 shadow-sm">
-                <i id="syncIcon" class="fa-solid fa-rotate text-emerald-400"></i>
+            <button onclick="syncGoogleSheetData(true)" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow-sm" title="Paksa Sinkron Ulang dari Google Sheet">
+                <i id="syncIcon" class="fa-solid fa-rotate"></i>
                 <span>Sinkron Ulang</span>
             </button>
         </div>
@@ -170,7 +170,7 @@
             </div>
 
             <!-- Master Table -->
-            <div class="flex-1 overflow-auto custom-scrollbar">
+            <div id="tableScrollContainer" onscroll="handleTableScroll()" class="flex-1 overflow-auto custom-scrollbar">
                 <table class="w-full text-left text-xs border-collapse">
                     <thead class="bg-slate-100 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200 sticky top-0 z-10 select-none">
                         <tr>
@@ -192,7 +192,7 @@
                                     <i id="sort-icon-type" class="fa-solid fa-sort text-slate-400 text-[10px]"></i>
                                 </div>
                             </th>
-                            <th onclick="handleSort('ref')" class="py-3 px-4 w-36 font-mono cursor-pointer hover:bg-slate-200/80 transition" title="Klik untuk mengurutkan">
+                            <th onclick="handleSort('ref')" class="py-3 px-4 w-36 font-mono cursor-pointer hover:bg-slate-200/80 transition" title="Klik me-ngurutkan">
                                 <div class="flex items-center justify-between gap-1">
                                     <span>Internal Ref</span>
                                     <i id="sort-icon-ref" class="fa-solid fa-sort text-slate-400 text-[10px]"></i>
@@ -296,40 +296,106 @@
         const cleanSampleProductData = [
             { row: 2, category: "Alat ukur", type: "Storable Product", ref: "QA-T10-0042", name: "10 A MICRO-OHMMETER C.A 6255 CHAUVIN ARNOUX", uom: "Units", valuation: "502.500001 Biaya Tools Produksi" },
             { row: 3, category: "IT", type: "Consumable", ref: "IT-B30-0001", name: "1 SET CLUTCH GEAR PRINTER EPSON L3110 L5190", uom: "Pcs", valuation: "605.000002 Biaya Peralatan Kantor" },
-            { row: 4, category: "Peralatan IT", type: "Storable Product", ref: "IT-A05-0089", name: "1 SET PC RAKITAN DESKTOP (include Monitor, Keyboard, Mouse)", uom: "Set", valuation: "18.900099 Transaksi Aktiva Tetap" },
-            { row: 5, category: "IT", type: "Consumable", ref: "IT-B30-0002", name: "1 SET PICK UP ROLLER PRINTER EPSON L3110 L5190", uom: "Pcs", valuation: "605.000002 Biaya Peralatan Kantor" },
-            { row: 6, category: "Sparepart mesin", type: "Storable Product", ref: "MTC-S07-5241", name: "300 SHOE CYLINDER", uom: "Pcs", valuation: "502.400001 Biaya Perawatan Dan Perbaikan Mesin" },
-            { row: 7, category: "Mesin", type: "Storable Product", ref: "MTC-A06-0035", name: "3 IN 1 MULTI BUSBAR MACHINE 15 X 220 MM", uom: "Units", valuation: "18.900099 Transaksi Aktiva Tetap" },
-            { row: 8, category: "Mesin", type: "Storable Product", ref: "MTC-A06-0036", name: "3 IN 1 MULTI BUSBAR MACHINE 20 X 260 MM", uom: "Units", valuation: "18.900099 Transaksi Aktiva Tetap" },
-            { row: 9, category: "Biaya Tools Produksi - MTC", type: "Storable Product", ref: "MTC-B31-0082", name: "3 LEG CHAIN SLING GRADE 100 KAP. 6.7 TON P. 2 METER", uom: "Pcs", valuation: "502.500001 Biaya Tools Produksi" },
-            { row: 10, category: "Biaya Tools Produksi - GA", type: "Storable Product", ref: "GA-T03-5161", name: "3\" UNDERGROUND REPLACEMENT BLADES (49-16-2774)", uom: "Pcs", valuation: "502.500001 Biaya Tools Produksi" },
-            { row: 11, category: "Peralatan Gedung", type: "Storable Product", ref: "GA-S02-5327", name: "45° ELBOW CPVC 2\" DN50", uom: "Pcs", valuation: "606.000001 Biaya Perbaikan Kantor dan Pabrik" },
-            { row: 12, category: "Biaya Tools Produksi - MTC", type: "Storable Product", ref: "MTC-B31-0081", name: "4 LEG CHAIN SLING GRADE 80 KAP. 8.0 TON P. 2 METER", uom: "Pcs", valuation: "502.500001 Biaya Tools Produksi" },
-            { row: 13, category: "Sparepart mesin", type: "Storable Product", ref: "MTC-S07-6100", name: "90 DEGREE RIGHT ANGLE BNC CONNECTORS", uom: "Pcs", valuation: "502.400001 Biaya Perawatan Dan Perbaikan Mesin" },
-            { row: 14, category: "Peralatan Gedung", type: "Storable Product", ref: "GA-S02-5328", name: "90° ELBOW CPVC 1.5\" DN40", uom: "Pcs", valuation: "606.000001 Biaya Perbaikan Kantor dan Pabrik" },
-            { row: 15, category: "Peralatan Gedung", type: "Storable Product", ref: "GA-S02-5329", name: "90° ELBOW CPVC 3\" DN80", uom: "Pcs", valuation: "606.000001 Biaya Perbaikan Kantor dan Pabrik" },
-            { row: 16, category: "Peralatan Gedung", type: "Storable Product", ref: "GA-S02-5330", name: "90° ELBOW CPVC 4\" DN100", uom: "Pcs", valuation: "606.000001 Biaya Perbaikan Kantor dan Pabrik" },
-            { row: 17, category: "Peralatan Gedung", type: "Storable Product", ref: "GA-S02-5331", name: "90° ELBOW CPVC 6\" DN150", uom: "Pcs", valuation: "606.000001 Biaya Perbaikan Kantor dan Pabrik" },
-            { row: 18, category: "Peralatan Gedung", type: "Storable Product", ref: "GA-S02-5382", name: "90° ELBOW UPVC 12\" DN300", uom: "Pcs", valuation: "606.000001 Biaya Perbaikan Kantor dan Pabrik" },
-            { row: 19, category: "Kabel & Kelistrikan", type: "Storable Product", ref: "EL-C01-1002", name: "COPPER CABLE NYY 3X2.5 MM2 100M", uom: "Roll", valuation: "502.100002 Material Kelistrikan" },
-            { row: 20, category: "Kabel & Kelistrikan", type: "Storable Product", ref: "EL-C01-1005", name: "COPPER FLEXIBLE WIRE NYAF 1X1.5 MM2", uom: "Meter", valuation: "502.100002 Material Kelistrikan" }
+            { row: 4, category: "Peralatan IT", type: "Storable Product", ref: "IT-A05-0089", name: "1 SET PC RAKITAN DESKTOP (include Monitor, Keyboard, Mouse)", uom: "Set", valuation: "18.900099 Transaksi Aktiva Tetap" }
         ];
 
-        let activeProducts = [...cleanSampleProductData];
-        let currentDisplayedProducts = [...cleanSampleProductData];
+        let activeProducts = [];
+        let currentDisplayedProducts = [];
         let highlightedRowIndex = null;
         let selectedMode = 1; // Default Mode 1
 
+        // Lazy Rendering / Virtualization Chunk Limits
+        const RENDER_CHUNK_SIZE = 100;
+        let currentlyRenderedLimit = RENDER_CHUNK_SIZE;
+
         // Table Sorting State
         let currentSortColumn = null;
-        let currentSortDir = 'asc'; // 'asc' or 'desc'
+        let currentSortDir = 'asc';
 
-        window.onload = function() {
-            renderMasterTable(activeProducts);
-            syncGoogleSheetData();
+        // --- INDEXEDDB STORAGE SYSTEM (INSTANT LOAD) ---
+        const DB_NAME = 'MasterProductAppDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'products_store';
+
+        function openIndexedDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME);
+                    }
+                };
+                request.onsuccess = (e) => resolve(e.target.result);
+                request.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        async function saveProductsToCache(products) {
+            try {
+                const db = await openIndexedDB();
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.put(products, 'cached_products');
+                store.put(new Date().toISOString(), 'last_sync_time');
+            } catch (err) {
+                console.warn("Gagal menyimpan ke cache lokal:", err);
+            }
+        }
+
+        async function getCachedProducts() {
+            try {
+                const db = await openIndexedDB();
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const productsReq = store.get('cached_products');
+                const syncTimeReq = store.get('last_sync_time');
+
+                return new Promise((resolve) => {
+                    tx.oncomplete = () => {
+                        resolve({
+                            products: productsReq.result || null,
+                            lastSync: syncTimeReq.result || null
+                        });
+                    };
+                    tx.onerror = () => resolve({ products: null, lastSync: null });
+                });
+            } catch (err) {
+                return { products: null, lastSync: null };
+            }
+        }
+
+        window.onload = async function() {
+            // 1. Muat instan dari IndexedDB Cache lokal
+            const cached = await getCachedProducts();
+
+            if (cached.products && cached.products.length > 0) {
+                activeProducts = cached.products;
+                // Render secara bertahap (hanya 100 item pertama) agar 0 detik delay
+                resetAndRenderTable(activeProducts);
+                
+                const syncDate = cached.lastSync ? new Date(cached.lastSync).toLocaleString('id-ID') : 'Lokal';
+                updateConnectionStatus(`Lokal: ${activeProducts.length} Produk (${syncDate})`, false);
+            } else {
+                // Jika cache lokal masih kosong (pertama kali buka), baru sinkronkan dari Google Sheet
+                syncGoogleSheetData(false);
+            }
         };
 
-        // Helper function to handle Google Sheet edit/share URLs automatically
+        function updateConnectionStatus(text, isSyncing = false) {
+            const statusText = document.getElementById('connectionText');
+            const dot = document.getElementById('statusIndicatorDot');
+            if (statusText) statusText.innerText = text;
+            
+            if (dot) {
+                if (isSyncing) {
+                    dot.className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
+                } else {
+                    dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+                }
+            }
+        }
+
         function getDirectCsvUrl(url) {
             if (!url) return url;
             const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
@@ -339,82 +405,11 @@
             return url;
         }
 
-        // Select 1 of 3 Search Modes
-        function selectSearchMode(modeNum) {
-            selectedMode = modeNum;
-
-            for (let i = 1; i <= 3; i++) {
-                const btn = document.getElementById(`modeBtn${i}`);
-                const circle = btn.querySelector('div');
-
-                if (i === modeNum) {
-                    btn.className = "p-2 rounded-xl border text-left transition flex items-center gap-2 bg-blue-50 border-blue-500 text-blue-900 shadow-sm ring-1 ring-blue-500";
-                    circle.className = "w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0";
-                } else {
-                    btn.className = "p-2 rounded-xl border border-slate-200 text-left transition flex items-center gap-2 bg-slate-50 text-slate-700 hover:border-slate-300";
-                    circle.className = "w-5 h-5 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-[10px] font-bold shrink-0";
-                }
-            }
-        }
-
-        // Table Column Sorting Logic
-        function handleSort(columnKey) {
-            if (currentSortColumn === columnKey) {
-                currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentSortColumn = columnKey;
-                currentSortDir = 'asc';
-            }
-
-            updateSortIcons();
-            applySortAndRender();
-        }
-
-        function updateSortIcons() {
-            const columns = ['row', 'category', 'type', 'ref', 'name', 'uom', 'valuation'];
-            columns.forEach(col => {
-                const icon = document.getElementById(`sort-icon-${col}`);
-                if (!icon) return;
-
-                if (col === currentSortColumn) {
-                    if (currentSortDir === 'asc') {
-                        icon.className = 'fa-solid fa-arrow-up-a-z text-blue-600 text-[11px]';
-                    } else {
-                        icon.className = 'fa-solid fa-arrow-down-z-a text-blue-600 text-[11px]';
-                    }
-                } else {
-                    icon.className = 'fa-solid fa-sort text-slate-400 text-[10px]';
-                }
-            });
-        }
-
-        function applySortAndRender() {
-            if (!currentSortColumn || !currentDisplayedProducts) return;
-
-            currentDisplayedProducts.sort((a, b) => {
-                let valA = a[currentSortColumn];
-                let valB = b[currentSortColumn];
-
-                if (typeof valA === 'number' && typeof valB === 'number') {
-                    return currentSortDir === 'asc' ? valA - valB : valB - valA;
-                }
-
-                valA = String(valA || '').toLowerCase();
-                valB = String(valB || '').toLowerCase();
-
-                if (valA < valB) return currentSortDir === 'asc' ? -1 : 1;
-                if (valA > valB) return currentSortDir === 'asc' ? 1 : -1;
-                return 0;
-            });
-
-            renderMasterTable(currentDisplayedProducts, false);
-        }
-
-        // Sync with Google Sheet CSV
-        function syncGoogleSheetData() {
+        function syncGoogleSheetData(forcedByUser = false) {
             const syncIcon = document.getElementById('syncIcon');
-            const statusText = document.getElementById('connectionText');
             if (syncIcon) syncIcon.classList.add('animate-spin');
+
+            updateConnectionStatus("Menyinkronkan dari Google Sheet...", true);
 
             const fetchUrl = getDirectCsvUrl(currentGSheetUrl);
 
@@ -425,19 +420,35 @@
                 })
                 .then(csvText => {
                     Papa.parse(csvText, {
-                        complete: function(results) {
+                        complete: async function(results) {
                             convertParsedCsvToMaster(results.data);
+                            
+                            // Simpan ke IndexedDB lokal untuk pembukaan instan selanjutnya
+                            await saveProductsToCache(activeProducts);
+
                             if (syncIcon) syncIcon.classList.remove('animate-spin');
-                            statusText.innerText = `Terhubung: Google Sheet Live (${activeProducts.length} Produk)`;
+                            const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                            updateConnectionStatus(`Tersinkron (${activeProducts.length} Produk - ${timeStr})`, false);
+
+                            if (forcedByUser) {
+                                alert(`Berhasil menyinkronkan ${activeProducts.length} data produk dari Google Sheet!`);
+                            }
                         }
                     });
                 })
                 .catch(err => {
-                    console.log("Menggunakan data master terpasang:", err.message);
-                    activeProducts = [...cleanSampleProductData];
-                    renderMasterTable(activeProducts);
+                    console.log("Gagal menyinkronkan:", err.message);
                     if (syncIcon) syncIcon.classList.remove('animate-spin');
-                    statusText.innerText = `Terhubung: ${activeProducts.length} Data Produk Master`;
+                    
+                    if (activeProducts.length === 0) {
+                        activeProducts = [...cleanSampleProductData];
+                        resetAndRenderTable(activeProducts);
+                    }
+                    
+                    updateConnectionStatus(`Offline (${activeProducts.length} Produk)`, false);
+                    if (forcedByUser) {
+                        alert("Gagal terhubung ke Google Sheet. Memakai data lokal yang tersimpan.");
+                    }
                 });
         }
 
@@ -462,23 +473,26 @@
 
             if (parsedList.length > 0) {
                 activeProducts = parsedList;
-                renderMasterTable(activeProducts);
+                resetAndRenderTable(activeProducts);
             }
         }
 
-        function renderMasterTable(data, updateDisplayedState = true) {
+        function resetAndRenderTable(data, updateDisplayedState = true) {
             if (updateDisplayedState) {
                 currentDisplayedProducts = [...data];
-                if (currentSortColumn) {
-                    applySortAndRender();
-                    return;
-                }
+            }
+            currentlyRenderedLimit = RENDER_CHUNK_SIZE;
+            renderMasterTable(currentDisplayedProducts, false);
+        }
+
+        function renderMasterTable(data, appendMode = false) {
+            const tbody = document.getElementById('masterTableBody');
+            
+            if (!appendMode) {
+                tbody.innerHTML = '';
             }
 
-            const tbody = document.getElementById('masterTableBody');
-            tbody.innerHTML = '';
-
-            if (data.length === 0) {
+            if (!data || data.length === 0) {
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="8" class="text-center py-12 text-slate-400 font-medium">
@@ -490,7 +504,12 @@
                 return;
             }
 
-            data.forEach((item) => {
+            const startIndex = appendMode ? (currentlyRenderedLimit - RENDER_CHUNK_SIZE) : 0;
+            const chunkToRender = data.slice(startIndex, currentlyRenderedLimit);
+
+            const fragment = document.createDocumentFragment();
+
+            chunkToRender.forEach((item) => {
                 const tr = document.createElement('tr');
                 tr.id = `row-item-${item.row}`;
                 tr.className = "hover:bg-blue-50/60 transition cursor-pointer border-b border-slate-200/80";
@@ -523,10 +542,89 @@
                         </button>
                     </td>
                 `;
-                tbody.appendChild(tr);
+                fragment.appendChild(tr);
             });
 
-            document.getElementById('rowCountBadge').innerText = `${data.length} Produk Loaded`;
+            tbody.appendChild(fragment);
+
+            const displayedCount = Math.min(currentlyRenderedLimit, data.length);
+            document.getElementById('rowCountBadge').innerText = `Tampil ${displayedCount.toLocaleString('id-ID')} dari ${data.length.toLocaleString('id-ID')} Produk`;
+        }
+
+        // Infinite scroll handler for fast progressive loading of 83k items
+        function handleTableScroll() {
+            const container = document.getElementById('tableScrollContainer');
+            if (!container) return;
+
+            if (container.scrollTop + container.clientHeight >= container.scrollHeight - 150) {
+                if (currentlyRenderedLimit < currentDisplayedProducts.length) {
+                    currentlyRenderedLimit += RENDER_CHUNK_SIZE;
+                    renderMasterTable(currentDisplayedProducts, true);
+                }
+            }
+        }
+
+        function handleSort(colKey) {
+            if (currentSortColumn === colKey) {
+                currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortColumn = colKey;
+                currentSortDir = 'asc';
+            }
+
+            updateSortIconsUI();
+            applySortAndRender();
+        }
+
+        function updateSortIconsUI() {
+            const columns = ['row', 'category', 'type', 'ref', 'name', 'uom', 'valuation'];
+            columns.forEach(col => {
+                const icon = document.getElementById(`sort-icon-${col}`);
+                if (!icon) return;
+                
+                if (col === currentSortColumn) {
+                    icon.className = currentSortDir === 'asc' 
+                        ? 'fa-solid fa-sort-up text-blue-600 text-[10px]' 
+                        : 'fa-solid fa-sort-down text-blue-600 text-[10px]';
+                } else {
+                    icon.className = 'fa-solid fa-sort text-slate-400 text-[10px]';
+                }
+            });
+        }
+
+        function applySortAndRender() {
+            if (!currentSortColumn) return;
+
+            currentDisplayedProducts.sort((a, b) => {
+                let valA = a[currentSortColumn];
+                let valB = b[currentSortColumn];
+
+                if (typeof valA === 'number' && typeof valB === 'number') {
+                    return currentSortDir === 'asc' ? valA - valB : valB - valA;
+                }
+
+                valA = String(valA || '').toLowerCase();
+                valB = String(valB || '').toLowerCase();
+
+                if (valA < valB) return currentSortDir === 'asc' ? -1 : 1;
+                if (valA > valB) return currentSortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            resetAndRenderTable(currentDisplayedProducts, false);
+        }
+
+        function selectSearchMode(modeNum) {
+            selectedMode = modeNum;
+            for (let i = 1; i <= 3; i++) {
+                const btn = document.getElementById(`modeBtn${i}`);
+                if (!btn) continue;
+                if (i === modeNum) {
+                    btn.className = "p-2 rounded-xl border text-left transition flex items-center gap-2 bg-blue-50 border-blue-500 text-blue-900 shadow-sm ring-1 ring-blue-500";
+                } else {
+                    btn.className = "p-2 rounded-xl border border-slate-200 text-left transition flex items-center gap-2 bg-slate-50 text-slate-700 hover:border-slate-300";
+                }
+            }
         }
 
         function highlightRowInTable(rowNum) {
@@ -547,7 +645,7 @@
             document.getElementById('aiSearchQuery').value = '';
             document.getElementById('recommendationsSection').classList.add('hidden');
             document.getElementById('aiErrorBox').classList.add('hidden');
-            renderMasterTable(activeProducts);
+            resetAndRenderTable(activeProducts);
         }
 
         async function executeSearch() {
@@ -572,7 +670,6 @@
                 const startTime = performance.now();
                 let terms = [];
                 
-                // If query contains '%', split by '%' operator, otherwise split by whitespace
                 if (query.includes('%')) {
                     terms = query.split('%').map(t => t.trim().toLowerCase()).filter(t => t.length > 0);
                 } else {
@@ -587,9 +684,8 @@
                 const endTime = performance.now();
                 statsBadge.innerText = `${(endTime - startTime).toFixed(1)}ms | Filter Cepat (${matches.length} produk ditemukan)`;
 
-                // Hide AI recommendations section for Filter Cepat & render ALL matching rows in table
                 recSection.classList.add('hidden');
-                renderMasterTable(matches);
+                resetAndRenderTable(matches);
                 return;
             }
 
@@ -603,7 +699,7 @@
 
             if (candidates.length === 0) {
                 loadingBox.classList.add('hidden');
-                renderMasterTable([]);
+                resetAndRenderTable([]);
                 return;
             }
 
@@ -615,10 +711,8 @@
                 loadingBox.classList.add('hidden');
                 statsBadge.innerText = `${(endTime - startTime).toFixed(0)}ms | Gemini 3 Flash`;
 
-                // Sembunyikan kartu rekomendasi atas agar tampilan langsung di tabel utama
                 recSection.classList.add('hidden');
 
-                // Petakan hasil rekomendasi AI ke objek produk lengkap dengan skor & alasan
                 const recRowsMap = new Map();
                 if (Array.isArray(recommendations)) {
                     recommendations.forEach(r => recRowsMap.set(r.row, r));
@@ -632,8 +726,7 @@
                         aiReason: recRowsMap.get(p.row)?.reason
                     }));
 
-                // Tampilkan produk rekomendasi AI langsung di tabel dengan format 6+ kolom lengkap & tombol salin
-                renderMasterTable(recItems);
+                resetAndRenderTable(recItems);
 
                 if (recItems.length > 0) {
                     highlightRowInTable(recItems[0].row);
