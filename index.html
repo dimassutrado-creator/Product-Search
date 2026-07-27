@@ -14,12 +14,24 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Toast animation */
+        @keyframes slideIn {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-toast {
+            animation: slideIn 0.3s ease-out forwards;
+        }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 h-screen flex flex-col overflow-hidden">
 
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
     <!-- Header Bar -->
-    <header class="bg-slate-900 text-white border-b border-slate-800 px-4 py-3 flex items-center justify-between shrink-0 shadow-md">
+    <header class="bg-slate-900 text-white border-b border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between shrink-0 shadow-md gap-2">
         <div class="flex items-center space-x-3">
             <div class="bg-blue-600 text-white p-2 rounded-xl font-bold flex items-center justify-center w-10 h-10 shadow-lg shadow-blue-600/30">
                 <i class="fa-solid fa-boxes-stacked text-lg"></i>
@@ -33,12 +45,18 @@
             </div>
         </div>
 
-        <div class="flex items-center space-x-3">
+        <div class="flex items-center space-x-2 flex-wrap gap-y-2">
             <!-- Connection Status -->
             <div id="connectionStatus" class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 rounded-lg text-xs font-medium">
                 <span id="statusIndicatorDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span id="connectionText">Memuat data lokal...</span>
             </div>
+
+            <!-- API Key Settings Button -->
+            <button onclick="openApiKeyModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 rounded-lg text-xs font-medium border border-slate-700 transition flex items-center gap-1.5 shadow-sm" title="Pengaturan API Key Gemini">
+                <i class="fa-solid fa-key text-emerald-400"></i>
+                <span>API Key</span>
+            </button>
 
             <!-- Ganti Link Sheet Button -->
             <button onclick="openLinkModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-amber-200 rounded-lg text-xs font-medium border border-slate-700 transition flex items-center gap-1.5 shadow-sm" title="Ubah Tautan Google Sheet">
@@ -123,7 +141,7 @@
                 <div class="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                 <div class="text-xs">
                     <span id="loadingTitle" class="font-bold text-blue-900">Menganalisis Makna Produk...</span>
-                    <span id="loadingDesc" class="text-blue-700 ml-1">Gemini 3 Flash sedang mencocokkan master data...</span>
+                    <span id="loadingDesc" class="text-blue-700 ml-1">Gemini AI sedang mencocokkan master data...</span>
                 </div>
             </div>
 
@@ -139,12 +157,12 @@
             <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                 <span class="text-xs font-bold text-slate-800 flex items-center gap-2">
                     <i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i>
-                    <span>Hasil Rekomendasi AI Gemini 3 Flash (5 Produk Teratas):</span>
+                    <span>Hasil Rekomendasi AI Gemini (5 Produk Teratas):</span>
                 </span>
                 <span id="searchStatsBadge" class="text-[10px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200"></span>
             </div>
 
-            <div id="recommendationsList" class="grid grid-cols-1 md:grid-cols-5 gap-2.5">
+            <div id="recommendationsList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
                 <!-- Recommendations cards dynamic injection -->
             </div>
         </div>
@@ -229,6 +247,59 @@
 
     </main>
 
+    <!-- Modal: Pengaturan API Key Gemini -->
+    <div id="apiKeyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+            <div class="bg-slate-900 text-white p-4 flex items-center justify-between border-b border-slate-800">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-key"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-sm">Pengaturan API Key Gemini AI</h3>
+                        <p class="text-[11px] text-slate-400">Diperlukan untuk menjalankan Mode Pencarian 2 & 3</p>
+                    </div>
+                </div>
+                <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-4">
+                <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-xs text-emerald-900 space-y-1.5">
+                    <p class="font-bold flex items-center gap-1.5 text-emerald-800">
+                        <i class="fa-solid fa-circle-check text-emerald-600"></i> Status API Key Aktif
+                    </p>
+                    <p class="text-[11px] text-emerald-700 leading-relaxed">
+                        API Key Gemini dari Anda telah berhasil terpasang dan tersimpan di penyimpanan browser secara lokal.
+                    </p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        API Key Gemini AI:
+                    </label>
+                    <input type="text" id="apiKeyInput" placeholder="Masukkan API Key Google Gemini..."
+                        class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition">
+                </div>
+
+                <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                    <button onclick="resetDefaultApiKey()" class="text-slate-500 hover:text-slate-800 underline font-medium">
+                        Gunakan Key Default
+                    </button>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="closeApiKeyModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition">
+                            Batal
+                        </button>
+                        <button onclick="saveApiKey()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-md shadow-emerald-600/30">
+                            Simpan Key
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal: Ganti Link Google Sheet -->
     <div id="linkModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
@@ -287,9 +358,12 @@
 
     <!-- JavaScript Logic -->
     <script>
+        // API KEY Gemini (Opsional: Jika kosong, lingkungan Canvas akan otomatis menyediakan runtime key)
+        const DEFAULT_GEMINI_API_KEY = "";
+        let currentGeminiApiKey = localStorage.getItem('gemini_api_key') || DEFAULT_GEMINI_API_KEY;
+
         // Embedded Default Google Sheet CSV Link (Converted to CSV Export stream)
         const DEFAULT_GSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1fZk2-dTcUs5m7fY1KKVw8mYZzj5iHh_r9ySQ7hDFlvA/export?format=csv";
-        
         let currentGSheetUrl = localStorage.getItem('custom_gsheet_url') || DEFAULT_GSHEET_CSV_URL;
 
         // Clean Sample Master Product Dataset (Fallback)
@@ -311,6 +385,34 @@
         // Table Sorting State
         let currentSortColumn = null;
         let currentSortDir = 'asc';
+
+        // Custom Toast Notification System
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-emerald-900 border-emerald-700 text-emerald-100' :
+                           type === 'error' ? 'bg-rose-900 border-rose-700 text-rose-100' :
+                           'bg-slate-900 border-slate-700 text-slate-100';
+            const icon = type === 'success' ? 'fa-circle-check text-emerald-400' :
+                         type === 'error' ? 'fa-circle-exclamation text-rose-400' :
+                         'fa-circle-info text-blue-400';
+
+            toast.className = `${bgClass} border px-4 py-2.5 rounded-xl shadow-xl text-xs font-medium flex items-center gap-2.5 pointer-events-auto animate-toast min-w-[250px]`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icon} text-sm shrink-0"></i>
+                <span class="flex-1">${escapeHtml(message)}</span>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
 
         // --- INDEXEDDB STORAGE SYSTEM (INSTANT LOAD) ---
         const DB_NAME = 'MasterProductAppDB';
@@ -371,13 +473,11 @@
 
             if (cached.products && cached.products.length > 0) {
                 activeProducts = cached.products;
-                // Render secara bertahap (hanya 100 item pertama) agar 0 detik delay
                 resetAndRenderTable(activeProducts);
                 
                 const syncDate = cached.lastSync ? new Date(cached.lastSync).toLocaleString('id-ID') : 'Lokal';
                 updateConnectionStatus(`Lokal: ${activeProducts.length.toLocaleString('id-ID')} Produk (${syncDate})`, false);
             } else {
-                // Jika cache lokal masih kosong (pertama kali buka), baru sinkronkan dari Google Sheet
                 syncGoogleSheetData(false);
             }
         };
@@ -423,7 +523,6 @@
                         complete: async function(results) {
                             convertParsedCsvToMaster(results.data);
                             
-                            // Simpan ke IndexedDB lokal untuk pembukaan instan selanjutnya
                             await saveProductsToCache(activeProducts);
 
                             if (syncIcon) syncIcon.classList.remove('animate-spin');
@@ -431,7 +530,7 @@
                             updateConnectionStatus(`Tersinkron (${activeProducts.length.toLocaleString('id-ID')} Produk - ${timeStr})`, false);
 
                             if (forcedByUser) {
-                                alert(`Berhasil menyinkronkan ${activeProducts.length.toLocaleString('id-ID')} data produk dari Google Sheet!`);
+                                showToast(`Berhasil menyinkronkan ${activeProducts.length.toLocaleString('id-ID')} data produk dari Google Sheet!`, 'success');
                             }
                         }
                     });
@@ -447,7 +546,7 @@
                     
                     updateConnectionStatus(`Offline (${activeProducts.length.toLocaleString('id-ID')} Produk)`, false);
                     if (forcedByUser) {
-                        alert("Gagal terhubung ke Google Sheet. Memakai data lokal yang tersimpan.");
+                        showToast("Gagal terhubung ke Google Sheet. Memakai data lokal yang tersimpan.", "error");
                     }
                 });
         }
@@ -464,7 +563,7 @@
                         category: r[0] || "-",
                         type: r[1] || "-",
                         ref: r[2] || "-",
-                        name: String(r[3]).trim(), // Column D
+                        name: String(r[3]).trim(),
                         uom: r[4] || "-",
                         valuation: r[5] || "-"
                     });
@@ -551,7 +650,6 @@
             document.getElementById('rowCountBadge').innerText = `Tampil ${displayedCount.toLocaleString('id-ID')} dari ${data.length.toLocaleString('id-ID')} Produk`;
         }
 
-        // Infinite scroll handler for fast progressive loading of 83k items
         function handleTableScroll() {
             const container = document.getElementById('tableScrollContainer');
             if (!container) return;
@@ -689,10 +787,10 @@
                 return;
             }
 
-            // MODE 2 & MODE 3: Gemini 3 Flash AI Semantic Search
+            // MODE 2 & MODE 3: Gemini AI Semantic Search
             loadingBox.classList.remove('hidden');
             document.getElementById('loadingTitle').innerText = selectedMode === 2 ? "Mencari Kemiripan Makna AI..." : "Memproses AI Multi-language...";
-            document.getElementById('loadingDesc').innerText = "Gemini 3 Flash sedang memadankan data terdekat...";
+            document.getElementById('loadingDesc').innerText = "Gemini Flash AI sedang memadankan data terdekat...";
 
             const isBilingual = (selectedMode === 3);
             const candidates = preFilterCandidates(query, activeProducts, 35, isBilingual);
@@ -709,9 +807,7 @@
                 const endTime = performance.now();
 
                 loadingBox.classList.add('hidden');
-                statsBadge.innerText = `${(endTime - startTime).toFixed(0)}ms | Gemini 3 Flash`;
-
-                recSection.classList.add('hidden');
+                statsBadge.innerText = `${(endTime - startTime).toFixed(0)}ms | Gemini AI`;
 
                 const recRowsMap = new Map();
                 if (Array.isArray(recommendations)) {
@@ -725,6 +821,41 @@
                         aiMatch: recRowsMap.get(p.row)?.match_percentage,
                         aiReason: recRowsMap.get(p.row)?.reason
                     }));
+
+                // Render Top Recommendation Cards
+                if (recItems.length > 0) {
+                    recSection.classList.remove('hidden');
+                    recList.innerHTML = '';
+                    
+                    recItems.slice(0, 5).forEach((recItem, idx) => {
+                        const card = document.createElement('div');
+                        card.className = "bg-slate-50 border border-slate-200 hover:border-blue-400 p-2.5 rounded-xl transition cursor-pointer flex flex-col justify-between shadow-sm hover:shadow-md";
+                        card.onclick = () => highlightRowInTable(recItem.row);
+                        card.innerHTML = `
+                            <div>
+                                <div class="flex items-center justify-between gap-1 mb-1">
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
+                                        #${idx + 1} (Baris ${recItem.row})
+                                    </span>
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        ${recItem.aiMatch || 90}% Match
+                                    </span>
+                                </div>
+                                <div class="text-xs font-bold text-slate-800 line-clamp-2 title="${escapeHtml(recItem.name)}">
+                                    ${escapeHtml(recItem.name)}
+                                </div>
+                                ${recItem.aiReason ? `<p class="text-[10px] text-slate-500 italic mt-1 line-clamp-2">💡 ${escapeHtml(recItem.aiReason)}</p>` : ''}
+                            </div>
+                            <div class="mt-2 pt-1.5 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-500">
+                                <span>Ref: ${escapeHtml(recItem.ref)}</span>
+                                <button onclick="copyToClipboard('${escapeHtml(recItem.name)}', event)" class="hover:text-blue-600 font-medium">
+                                    <i class="fa-regular fa-copy mr-0.5"></i> Salin
+                                </button>
+                            </div>
+                        `;
+                        recList.appendChild(card);
+                    });
+                }
 
                 resetAndRenderTable(recItems);
 
@@ -747,8 +878,11 @@
             if (isBilingual) {
                 const dict = {
                     "siku": ["elbow"],
+                    "elbow": ["siku"],
                     "kabel": ["cable", "wire"],
+                    "cable": ["kabel"],
                     "tembaga": ["copper"],
+                    "copper": ["tembaga"],
                     "alat": ["tool", "meter"],
                     "ukur": ["meter", "tester", "ohmmeter"],
                     "mesin": ["machine"],
@@ -790,8 +924,10 @@
         }
 
         async function callGeminiReRank(userQuery, candidateItems, isBilingual) {
-            const apiKey = 'AQ.Ab8RN6II3XCCsJkKgrGpY_N0EetemgHthl10Gt8v-gpIsYnGMw';
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+            const apiKey = currentGeminiApiKey || "";
+
+            // Menggunakan model Gemini 3 Flash Preview resmi
+            const modelsToTry = ["gemini-3-flash-preview", "gemini-3-flash"];
 
             const candidateListText = candidateItems.map(c => `[Baris ${c.row}] Ref: "${c.ref}" | Name: "${c.name}"`).join("\n");
 
@@ -808,7 +944,7 @@ Pahami istilah dwibahasa (contoh: "siku" = "elbow", "kabel tembaga" = "copper ca
 ${promptInstruction}
 
 Aturan:
-1. Kembalikan HANYA array JSON valid tanpa markdown (\`\`\`json).
+1. Kembalikan HANYA array JSON valid tanpa format markdown \`\`\`json.
 
 Format Output JSON:
 [
@@ -832,48 +968,83 @@ Format Output JSON:
             };
 
             let response;
-            let retries = 3;
-            let delay = 1000;
+            let lastError = null;
 
-            while (retries > 0) {
-                try {
-                    response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+            for (const model of modelsToTry) {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+                let retries = 2;
+                let delay = 1000;
 
-                    if (response.status === 429) {
+                while (retries > 0) {
+                    try {
+                        response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (response.status === 429) {
+                            await new Promise(res => setTimeout(res, delay));
+                            delay *= 2;
+                            retries--;
+                            continue;
+                        }
+
+                        if (!response.ok) {
+                            const errData = await response.json().catch(() => ({}));
+                            throw new Error(errData.error?.message || `HTTP ${response.status}`);
+                        }
+
+                        const result = await response.json();
+                        const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                        if (!textResponse) throw new Error("Respon AI Gemini kosong.");
+
+                        try {
+                            return JSON.parse(textResponse);
+                        } catch (e) {
+                            throw new Error("Gagal menguraikan format respon JSON dari AI.");
+                        }
+                    } catch (e) {
+                        lastError = e;
+                        if (retries <= 1) break;
                         await new Promise(res => setTimeout(res, delay));
                         delay *= 2;
                         retries--;
-                        continue;
                     }
-
-                    if (!response.ok) {
-                        const errData = await response.json();
-                        throw new Error(errData.error?.message || `HTTP ${response.status}`);
-                    }
-
-                    break;
-                } catch (e) {
-                    if (retries <= 1) throw e;
-                    await new Promise(res => setTimeout(res, delay));
-                    delay *= 2;
-                    retries--;
                 }
             }
 
-            const result = await response.json();
-            const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            throw lastError || new Error("Gagal memanggil API Gemini.");
+        }
 
-            if (!textResponse) throw new Error("Respon AI Gemini kosong.");
+        // API Key Modal Handlers
+        function openApiKeyModal() {
+            document.getElementById('apiKeyInput').value = currentGeminiApiKey;
+            document.getElementById('apiKeyModal').classList.remove('hidden');
+        }
 
-            try {
-                return JSON.parse(textResponse);
-            } catch (e) {
-                throw new Error("Gagal menguraikan format respon JSON.");
+        function closeApiKeyModal() {
+            document.getElementById('apiKeyModal').classList.add('hidden');
+        }
+
+        function saveApiKey() {
+            const keyVal = document.getElementById('apiKeyInput').value.trim();
+            if (!keyVal) {
+                showToast("API Key tidak boleh kosong!", "error");
+                return;
             }
+            currentGeminiApiKey = keyVal;
+            localStorage.setItem('gemini_api_key', currentGeminiApiKey);
+            closeApiKeyModal();
+            showToast("API Key Gemini berhasil disimpan!", "success");
+        }
+
+        function resetDefaultApiKey() {
+            currentGeminiApiKey = DEFAULT_GEMINI_API_KEY;
+            localStorage.removeItem('gemini_api_key');
+            document.getElementById('apiKeyInput').value = DEFAULT_GEMINI_API_KEY;
+            showToast("API Key dikembalikan ke default.", "info");
         }
 
         // Modal Handlers for Google Sheet URL
@@ -900,6 +1071,7 @@ Format Output JSON:
             currentGSheetUrl = DEFAULT_GSHEET_CSV_URL;
             localStorage.removeItem('custom_gsheet_url');
             document.getElementById('gsheetUrlInput').value = DEFAULT_GSHEET_CSV_URL;
+            showToast("Link Google Sheet dikembalikan ke default.", "info");
         }
 
         function copyToClipboard(text, event) {
@@ -910,7 +1082,7 @@ Format Output JSON:
             el.select();
             document.execCommand('copy');
             document.body.removeChild(el);
-            alert("Nama produk berhasil disalin: " + text);
+            showToast("Nama produk berhasil disalin: " + text, "success");
         }
 
         function escapeHtml(text) {
