@@ -162,21 +162,6 @@
             </div>
         </div>
 
-        <!-- AI Recommendations Display Section (Appears after AI search) -->
-        <div id="recommendationsSection" class="hidden bg-white rounded-2xl border border-blue-200 shadow-sm p-4 space-y-2.5 shrink-0">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-                <span class="text-xs font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i>
-                    <span>Hasil Rekomendasi AI Gemini (5 Produk Teratas):</span>
-                </span>
-                <span id="searchStatsBadge" class="text-[10px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200"></span>
-            </div>
-
-            <div id="recommendationsList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
-                <!-- Recommendations cards dynamic injection -->
-            </div>
-        </div>
-
         <!-- Table View Section -->
         <div class="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-0 overflow-hidden">
             
@@ -187,6 +172,7 @@
                     <span id="rowCountBadge" class="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
                         Loading...
                     </span>
+                    <span id="searchStatsBadge" class="hidden text-[10px] font-mono text-slate-500 bg-slate-200/60 px-2 py-0.5 rounded border border-slate-300 ml-1.5"></span>
                 </div>
 
                 <div class="text-[11px] text-slate-500 flex items-center gap-1.5">
@@ -856,8 +842,12 @@
 
         function resetSearchFilter() {
             document.getElementById('aiSearchQuery').value = '';
-            document.getElementById('recommendationsSection').classList.add('hidden');
             document.getElementById('aiErrorBox').classList.add('hidden');
+            const statsBadge = document.getElementById('searchStatsBadge');
+            if (statsBadge) {
+                statsBadge.classList.add('hidden');
+                statsBadge.innerText = '';
+            }
             resetAndRenderTable(activeProducts);
         }
 
@@ -870,15 +860,10 @@
 
             const loadingBox = document.getElementById('aiLoading');
             const errorBox = document.getElementById('aiErrorBox');
-            const recSection = document.getElementById('recommendationsSection');
-            const recList = document.getElementById('recommendationsList');
             const statsBadge = document.getElementById('searchStatsBadge');
 
             errorBox.classList.add('hidden');
-            
-            // Sembunyikan bagian rekomendasi di awal pencarian
-            recSection.classList.add('hidden'); 
-            recList.innerHTML = '';
+            if (statsBadge) statsBadge.classList.add('hidden');
 
             // MODE 1: Fast String Local Match
             if (selectedMode === 1) {
@@ -893,10 +878,10 @@
                 });
 
                 const endTime = performance.now();
-                statsBadge.innerText = `${(endTime - startTime).toFixed(1)}ms | Filter Cepat (${matches.length} produk ditemukan)`;
-
-                // Pastikan bagian Rekomendasi AI tetap tersembunyi di Mode 1
-                recSection.classList.add('hidden');
+                if (statsBadge) {
+                    statsBadge.innerText = `${(endTime - startTime).toFixed(1)}ms | Filter Cepat (${matches.length} produk ditemukan)`;
+                    statsBadge.classList.remove('hidden');
+                }
                 
                 resetAndRenderTable(matches);
                 return;
@@ -921,7 +906,10 @@
                 const endTime = performance.now();
 
                 loadingBox.classList.add('hidden');
-                statsBadge.innerText = `${(endTime - startTime).toFixed(0)}ms | Gemini AI`;
+                if (statsBadge) {
+                    statsBadge.innerText = `${(endTime - startTime).toFixed(0)}ms | Gemini AI`;
+                    statsBadge.classList.remove('hidden');
+                }
 
                 const recRowsMap = new Map();
                 if (Array.isArray(recommendations)) {
@@ -935,41 +923,6 @@
                         aiMatch: recRowsMap.get(p.row)?.match_percentage,
                         aiReason: recRowsMap.get(p.row)?.reason
                     }));
-
-                // Render Top Recommendation Cards hanya di Mode 2 jika ada hasil
-                if (recItems.length > 0) {
-                    recSection.classList.remove('hidden');
-                    recList.innerHTML = '';
-                    
-                    recItems.slice(0, 5).forEach((recItem, idx) => {
-                        const card = document.createElement('div');
-                        card.className = "bg-slate-50 border border-slate-200 hover:border-blue-400 p-2.5 rounded-xl transition cursor-pointer flex flex-col justify-between shadow-sm hover:shadow-md";
-                        card.onclick = () => highlightRowInTable(recItem.row);
-                        card.innerHTML = `
-                            <div>
-                                <div class="flex items-center justify-between gap-1 mb-1">
-                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
-                                        #${idx + 1} (Baris ${recItem.row})
-                                    </span>
-                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                        ${recItem.aiMatch || 90}% Match
-                                    </span>
-                                </div>
-                                <div class="text-xs font-bold text-slate-800 line-clamp-2 title="${escapeHtml(recItem.name)}">
-                                    ${escapeHtml(recItem.name)}
-                                </div>
-                                ${recItem.aiReason ? `<p class="text-[10px] text-slate-500 italic mt-1 line-clamp-2">💡 ${escapeHtml(recItem.aiReason)}</p>` : ''}
-                            </div>
-                            <div class="mt-2 pt-1.5 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-500">
-                                <span>Ref: ${escapeHtml(recItem.ref)}</span>
-                                <button onclick="copyToClipboard('${escapeHtml(recItem.name)}', event)" class="hover:text-blue-600 font-medium">
-                                    <i class="fa-regular fa-copy mr-0.5"></i> Salin
-                                </button>
-                            </div>
-                        `;
-                        recList.appendChild(card);
-                    });
-                }
 
                 resetAndRenderTable(recItems);
 
