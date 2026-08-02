@@ -864,8 +864,8 @@
                     // Kita tidak melakukan .trim() pada hasil pecahan, agar "nya " (dengan spasi) tetap terbaca.
                     terms = rawQuery.toLowerCase().split('%').filter(t => t !== '');
                 } else {
-                    // Jika tidak ada '%', perilaku default adalah memecah berdasarkan spasi.
-                    terms = rawQuery.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+                    // Jika tidak ada '%', jadikan seluruh kueri sebagai SATU kesatuan frase persis (jangan dipecah spasi).
+                    terms = [rawQuery.toLowerCase()];
                 }
                 
                 const matches = activeProducts.filter(item => {
