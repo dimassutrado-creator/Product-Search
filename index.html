@@ -93,38 +93,29 @@
     <!-- Unified Single Main Screen -->
     <main class="flex-1 flex flex-col min-w-0 bg-slate-100 overflow-hidden p-4 space-y-3">
 
-        <!-- Top Box: Search Controls & 3 Options Selector -->
+        <!-- Top Box: Search Controls & 2 Options Selector -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3 shrink-0">
             
-            <!-- Mode Selection Bar (3 Options) -->
+            <!-- Mode Selection Bar (2 Options) -->
             <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                 <label class="text-xs font-bold text-slate-700 flex items-center gap-2">
                     <i class="fa-solid fa-sliders text-blue-600"></i>
                     <span>Pilih Mode Pencarian:</span>
                 </label>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 flex-1 max-w-3xl">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 flex-1 max-w-2xl">
                     <!-- Option 1: Filter Cepat -->
                     <button id="modeBtn1" onclick="selectSearchMode(1)" class="p-2 rounded-xl border text-left transition flex items-center gap-2 bg-blue-50 border-blue-500 text-blue-900 shadow-sm ring-1 ring-blue-500">
                         <div class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">1</div>
                         <div class="min-w-0">
                             <div class="text-xs font-bold text-slate-900 truncate">Filter Cepat</div>
-                            <div class="text-[10px] text-slate-500 truncate">Pencarian kata lokal instan (Tanpa AI)</div>
+                            <div class="text-[10px] text-slate-500 truncate">Pencarian kata persis (Pemisah ganda: %)</div>
                         </div>
                     </button>
 
-                    <!-- Option 2: Pencarian Relevan Tanpa Multi-lang -->
+                    <!-- Option 2: Multi-language (ID <-> EN) -->
                     <button id="modeBtn2" onclick="selectSearchMode(2)" class="p-2 rounded-xl border border-slate-200 text-left transition flex items-center gap-2 bg-slate-50 text-slate-700 hover:border-slate-300">
                         <div class="w-5 h-5 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-[10px] font-bold shrink-0">2</div>
-                        <div class="min-w-0">
-                            <div class="text-xs font-bold text-slate-900 truncate">Pencarian Relevan</div>
-                            <div class="text-[10px] text-slate-500 truncate">Makna AI (Tanpa Multi-language)</div>
-                        </div>
-                    </button>
-
-                    <!-- Option 3: Multi-language (ID <-> EN) -->
-                    <button id="modeBtn3" onclick="selectSearchMode(3)" class="p-2 rounded-xl border border-slate-200 text-left transition flex items-center gap-2 bg-slate-50 text-slate-700 hover:border-slate-300">
-                        <div class="w-5 h-5 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-[10px] font-bold shrink-0">3</div>
                         <div class="min-w-0">
                             <div class="text-xs font-bold text-slate-900 truncate">Multi-language (ID ↔ EN)</div>
                             <div class="text-[10px] text-slate-500 truncate">Makna AI dwibahasa (siku ↔ elbow)</div>
@@ -140,7 +131,7 @@
                     <input type="text" id="aiSearchQuery" 
                         oninput="handleSearchInput()"
                         onkeydown="if(event.key==='Enter') executeSearch()"
-                        placeholder="Ketik kata pencarian (Contoh: nfa%jadi%mtr, siku cpvc 3 inc, kabel tembaga...)" 
+                        placeholder="Ketik kata pencarian (Mode 1 gunakan % untuk multi-kata, cth: nfa%jadi)" 
                         class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition shadow-sm">
                 </div>
 
@@ -159,7 +150,7 @@
             <div id="aiLoading" class="hidden p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-center gap-3">
                 <div class="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                 <div class="text-xs">
-                    <span id="loadingTitle" class="font-bold text-blue-900">Menganalisis Makna Produk...</span>
+                    <span id="loadingTitle" class="font-bold text-blue-900">Memproses AI Multi-language...</span>
                     <span id="loadingDesc" class="text-blue-700 ml-1">Gemini AI sedang mencocokkan master data...</span>
                 </div>
             </div>
@@ -282,7 +273,7 @@
                     </div>
                     <div>
                         <h3 class="font-bold text-sm">Pengaturan API Key Gemini AI</h3>
-                        <p class="text-[11px] text-slate-400">Diperlukan untuk menjalankan Mode Pencarian 2 & 3</p>
+                        <p class="text-[11px] text-slate-400">Diperlukan untuk menjalankan Mode Pencarian 2</p>
                     </div>
                 </div>
                 <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
@@ -825,7 +816,8 @@
 
         function selectSearchMode(modeNum) {
             selectedMode = modeNum;
-            for (let i = 1; i <= 3; i++) {
+            // Now only 2 modes exist
+            for (let i = 1; i <= 2; i++) {
                 const btn = document.getElementById(`modeBtn${i}`);
                 if (!btn) continue;
                 if (i === modeNum) {
@@ -883,22 +875,19 @@
             const statsBadge = document.getElementById('searchStatsBadge');
 
             errorBox.classList.add('hidden');
-            recSection.classList.add('hidden');
+            
+            // Sembunyikan bagian rekomendasi di awal pencarian
+            recSection.classList.add('hidden'); 
             recList.innerHTML = '';
 
-            // MODE 1: Fast String Local Match across Name, Category, UOM, Ref, Valuation with Wildcard (%)
+            // MODE 1: Fast String Local Match
             if (selectedMode === 1) {
                 const startTime = performance.now();
-                let terms = [];
                 
-                if (query.includes('%')) {
-                    terms = query.split('%').map(t => t.trim().toLowerCase()).filter(t => t.length > 0);
-                } else {
-                    terms = query.toLowerCase().split(/\s+/).filter(t => t.length > 0);
-                }
+                // Pemisahan kata HANYA menggunakan "%". Spasi dianggap satu kesatuan string.
+                const terms = query.toLowerCase().split('%').map(t => t.trim()).filter(t => t.length > 0);
                 
                 const matches = activeProducts.filter(item => {
-                    // Combine all row text attributes to search across name, category, uom, ref, type, valuation
                     const searchableText = `${item.category} ${item.type} ${item.ref} ${item.name} ${item.uom} ${item.valuation}`.toLowerCase();
                     return terms.every(term => searchableText.includes(term));
                 });
@@ -906,18 +895,19 @@
                 const endTime = performance.now();
                 statsBadge.innerText = `${(endTime - startTime).toFixed(1)}ms | Filter Cepat (${matches.length} produk ditemukan)`;
 
+                // Pastikan bagian Rekomendasi AI tetap tersembunyi di Mode 1
                 recSection.classList.add('hidden');
+                
                 resetAndRenderTable(matches);
                 return;
             }
 
-            // MODE 2 & MODE 3: Gemini AI Semantic Search
+            // MODE 2: Gemini AI Semantic Search (Multi-language)
             loadingBox.classList.remove('hidden');
-            document.getElementById('loadingTitle').innerText = selectedMode === 2 ? "Mencari Kemiripan Makna AI..." : "Memproses AI Multi-language...";
+            document.getElementById('loadingTitle').innerText = "Memproses AI Multi-language...";
             document.getElementById('loadingDesc').innerText = "Gemini Flash AI sedang memadankan data terdekat...";
 
-            const isBilingual = (selectedMode === 3);
-            const candidates = preFilterCandidates(query, activeProducts, 35, isBilingual);
+            const candidates = preFilterCandidates(query, activeProducts, 35, true);
 
             if (candidates.length === 0) {
                 loadingBox.classList.add('hidden');
@@ -927,7 +917,7 @@
 
             try {
                 const startTime = performance.now();
-                const recommendations = await callGeminiReRank(query, candidates, isBilingual);
+                const recommendations = await callGeminiReRank(query, candidates);
                 const endTime = performance.now();
 
                 loadingBox.classList.add('hidden');
@@ -946,7 +936,7 @@
                         aiReason: recRowsMap.get(p.row)?.reason
                     }));
 
-                // Render Top Recommendation Cards
+                // Render Top Recommendation Cards hanya di Mode 2 jika ada hasil
                 if (recItems.length > 0) {
                     recSection.classList.remove('hidden');
                     recList.innerHTML = '';
@@ -1047,21 +1037,14 @@
             return topMatches;
         }
 
-        async function callGeminiReRank(userQuery, candidateItems, isBilingual) {
+        async function callGeminiReRank(userQuery, candidateItems) {
             const apiKey = (currentGeminiApiKey || DEFAULT_GEMINI_API_KEY || "").trim();
-            // Menggunakan model Gemini 3 Flash Preview resmi
             const modelsToTry = ["gemini-3-flash-preview", "gemini-3-flash"];
 
             const candidateListText = candidateItems.map(c => `[Baris ${c.row}] Ref: "${c.ref}" | Name: "${c.name}"`).join("\n");
 
-            let promptInstruction = "";
-            if (!isBilingual) {
-                promptInstruction = `MODE: EKSKLUSIF / DIRECT (Tanpa Penerjemahan Multilanguage).
-Pilih 5 produk yang paling cocok secara ketat sesuai kueri tanpa menerjemahkan bahasa.`;
-            } else {
-                promptInstruction = `MODE: MULTI-LANGUAGE (Indonesia <-> Inggris).
+            const promptInstruction = `MODE: MULTI-LANGUAGE (Indonesia <-> Inggris).
 Pahami istilah dwibahasa (contoh: "siku" = "elbow", "kabel tembaga" = "copper cable", "3 inc" = "3\" DN80"). Pilih 5 produk paling relevan secara makna.`;
-            }
 
             const systemPrompt = `Kamu adalah mesin pencari Master Produk pintar.
 ${promptInstruction}
@@ -1205,7 +1188,7 @@ Format Output JSON:
             el.select();
             document.execCommand('copy');
             document.body.removeChild(el);
-            showToast("Nama produk berhasil disalin: " + text, "success");
+            showToast("Teks berhasil disalin: " + text, "success");
         }
 
         function escapeHtml(text) {
