@@ -138,6 +138,7 @@
                 <div class="relative flex-1">
                     <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
                     <input type="text" id="aiSearchQuery" 
+                        oninput="handleSearchInput()"
                         onkeydown="if(event.key==='Enter') executeSearch()"
                         placeholder="Ketik kata pencarian (Contoh: nfa%jadi%mtr, siku cpvc 3 inc, kabel tembaga...)" 
                         class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition shadow-sm">
@@ -832,6 +833,18 @@
                 } else {
                     btn.className = "p-2 rounded-xl border border-slate-200 text-left transition flex items-center gap-2 bg-slate-50 text-slate-700 hover:border-slate-300";
                 }
+            }
+            if (selectedMode === 1) {
+                executeSearch();
+            }
+        }
+
+        function handleSearchInput() {
+            const query = document.getElementById('aiSearchQuery').value;
+            if (selectedMode === 1) {
+                executeSearch();
+            } else if (query.trim() === '') {
+                resetSearchFilter();
             }
         }
 
