@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Master Product Search Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Resizable Column Styles */
+        th.resizable-th {
+            position: relative;
+        }
+        .col-resizer {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            cursor: col-resize;
+            user-select: none;
+            z-index: 20;
+        }
+        .col-resizer:hover, .col-resizer.resizing {
+            background-color: #3b82f6;
+        }
+
+        /* Toast animation */
+        @keyframes slideIn {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-toast {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Header Bar -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between shrink-0 shadow-md gap-2">
+        <div class="flex items-center space-x-3">
+            <div class="bg-blue-600 text-white p-2 rounded-xl font-bold flex items-center justify-center w-10 h-10 shadow-lg shadow-blue-600/30">
+                <i class="fa-solid fa-boxes-stacked text-lg"></i>
+            </div>
+            <div>
+                <h1 class="text-base font-bold tracking-tight leading-none flex items-center gap-2">
+                    Master Product Hub
+                    <span class="bg-blue-500/20 text-blue-400 text-[10px] font-mono px-2 py-0.5 rounded border border-blue-500/30">AI Powered</span>
+                </h1>
+                <p class="text-xs text-slate-400 mt-0.5">Sistem Pencarian & Pencocokan Master Produk (Referensi Kolom D)</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2 flex-wrap gap-y-2">
+            <!-- Connection Status -->
+            <div id="connectionStatus" class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 rounded-lg text-xs font-medium">
+                <span id="statusIndicatorDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span id="connectionText">Memuat data lokal...</span>
+            </div>
+
+            <!-- API Key Settings Button -->
+            <button onclick="openApiKeyModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 rounded-lg text-xs font-medium border border-slate-700 transition flex items-center gap-1.5 shadow-sm" title="Pengaturan API Key Gemini">
+                <i class="fa-solid fa-key text-emerald-400"></i>
+                <span>API Key</span>
+            </button>
+
+            <!-- Ganti Link Sheet Button -->
+            <button onclick="openLinkModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-amber-200 rounded-lg text-xs font-medium border border-slate-700 transition flex items-center gap-1.5 shadow-sm" title="Ubah Tautan Google Sheet">
+                <i class="fa-solid fa-link text-amber-400"></i>
+                <span>Ganti Link Sheet</span>
+            </button>
+
+            <!-- Refresh Data Button -->
+            <button onclick="syncGoogleSheetData(true)" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow-sm" title="Paksa Sinkron Ulang dari Google Sheet">
+                <i id="syncIcon" class="fa-solid fa-rotate"></i>
+                <span>Sinkron Ulang</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Unified Single Main Screen -->
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-100 overflow-hidden p-4 space-y-3">
+
+        <!-- Top Box: Search Controls & 3 Options Selector -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3 shrink-0">
+            
+            <!-- Mode Selection Bar (3 Options) -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <label class="text-xs font-bold text-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-blue-600"></i>
+                    <span>Pilih Mode Pencarian:</span>
+                </label>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 flex-1 max-w-3xl">
+                    <!-- Option 1: Filter Cepat -->
+                    <button id="modeBtn1" onclick="selectSearchMode(1)" class="p-2 rounded-xl border text-left transition flex items-center gap-2 bg-blue-50 border-blue-500 text-blue-900 shadow-sm ring-1 ring-blue-500">
+                        <div class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">1</div>
+                        <div class="min-w-0">
+                            <div class="text-xs font-bold text-slate-900 truncate">Filter Cepat</div>
+                            <div class="text-[10px] text-slate-500 truncate">Pencarian kata lokal instan (Tanpa AI)</div>
+                        </div>
+                    </button>
+
+                    <!-- Option 2: Pencarian Relevan Tanpa Multi-lang -->
+                    <button id="modeBtn2" onclick="selectSearchMode(2)" class="p-2 rounded-xl border border-slate-200 text-left transition flex items-center gap-2 bg-slate-50 text-slate-700 hover:border-slate-300">
+                        <div class="w-5 h-5 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-[10px] font-bold shrink-0">2</div>
+                        <div class="min-w-0">
+                            <div class="text-xs font-bold text-slate-900 truncate">Pencarian Relevan</div>
+                            <div class="text-[10px] text-slate-500 truncate">Makna AI (Tanpa Multi-language)</div>
+                        </div>
+                    </button>
+
+                    <!-- Option 3: Multi-language (ID <-> EN) -->
+                    <button id="modeBtn3" onclick="selectSearchMode(3)" class="p-2 rounded-xl border border-slate-200 text-left transition flex items-center gap-2 bg-slate-50 text-slate-700 hover:border-slate-300">
+                        <div class="w-5 h-5 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-[10px] font-bold shrink-0">3</div>
+                        <div class="min-w-0">
+                            <div class="text-xs font-bold text-slate-900 truncate">Multi-language (ID ↔ EN)</div>
+                            <div class="text-[10px] text-slate-500 truncate">Makna AI dwibahasa (siku ↔ elbow)</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search Query Bar -->
+            <div class="flex items-center gap-2">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+                    <input type="text" id="aiSearchQuery" 
+                        onkeydown="if(event.key==='Enter') executeSearch()"
+                        placeholder="Ketik kata pencarian (Contoh: nfa%jadi%mtr, siku cpvc 3 inc, kabel tembaga...)" 
+                        class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition shadow-sm">
+                </div>
+
+                <button onclick="executeSearch()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold rounded-xl transition flex items-center gap-2 shadow-md shadow-blue-600/20 shrink-0">
+                    <span>Cari Produk</span>
+                    <i class="fa-solid fa-paper-plane text-xs"></i>
+                </button>
+
+                <button onclick="resetSearchFilter()" class="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-xl transition border border-slate-200 shrink-0" title="Reset Pencarian">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    <span class="hidden md:inline ml-1">Reset</span>
+                </button>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="aiLoading" class="hidden p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-center gap-3">
+                <div class="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <div class="text-xs">
+                    <span id="loadingTitle" class="font-bold text-blue-900">Menganalisis Makna Produk...</span>
+                    <span id="loadingDesc" class="text-blue-700 ml-1">Gemini AI sedang mencocokkan master data...</span>
+                </div>
+            </div>
+
+            <!-- Error Notification -->
+            <div id="aiErrorBox" class="hidden p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-rose-600"></i>
+                <div id="aiErrorMessage" class="flex-1 text-[11px]"></div>
+            </div>
+        </div>
+
+        <!-- AI Recommendations Display Section (Appears after AI search) -->
+        <div id="recommendationsSection" class="hidden bg-white rounded-2xl border border-blue-200 shadow-sm p-4 space-y-2.5 shrink-0">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                <span class="text-xs font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i>
+                    <span>Hasil Rekomendasi AI Gemini (5 Produk Teratas):</span>
+                </span>
+                <span id="searchStatsBadge" class="text-[10px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200"></span>
+            </div>
+
+            <div id="recommendationsList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                <!-- Recommendations cards dynamic injection -->
+            </div>
+        </div>
+
+        <!-- Table View Section -->
+        <div class="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-0 overflow-hidden">
+            
+            <div class="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between shrink-0">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-table-list text-slate-400 text-xs"></i>
+                    <span class="text-xs font-bold text-slate-700">Daftar Master Produk</span>
+                    <span id="rowCountBadge" class="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                        Loading...
+                    </span>
+                </div>
+
+                <div class="text-[11px] text-slate-500 flex items-center gap-1.5">
+                    <span>Kolom Acuan:</span>
+                    <span class="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded border border-blue-200">
+                        <i class="fa-solid fa-star text-amber-500 mr-1 text-[9px]"></i>Name
+                    </span>
+                </div>
+            </div>
+
+            <!-- Master Table -->
+            <div id="tableScrollContainer" onscroll="handleTableScroll()" class="flex-1 overflow-auto custom-scrollbar">
+                <table id="masterTable" class="w-full text-left text-xs border-collapse table-fixed">
+                    <thead class="bg-slate-100 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200 sticky top-0 z-10 select-none">
+                        <tr>
+                            <th onclick="handleSort('row')" class="resizable-th py-3 px-3 w-20 text-center cursor-pointer hover:bg-slate-200/80 transition" title="Klik untuk mengurutkan">
+                                <div class="flex items-center justify-center gap-1">
+                                    <span>Baris</span>
+                                    <i id="sort-icon-row" class="fa-solid fa-sort text-slate-400 text-[10px]"></i>
+                                </div>
+                                <div class="col-resizer"></div>
+                            </th>
+                            <th onclick="handleSort('category')" class="resizable-th py-3 px-3 w-40 cursor-pointer hover:bg-slate-200/80 transition" title="Klik untuk mengurutkan">
+                                <div class="flex items-center justify-between gap-1">
+                                    <span>Product Category</span>
+                                    <i id="sort-icon-category" class="fa-solid fa-sort text-slate-400 text-[10px]"></i>
+                                </div>
+                                <div class="col-resizer"></div>
+                            </th>
+                            <th onclick="handleSort('type')" class="resizable-th py-3 px-3 w-32 cursor-pointer hover:bg-slate-200/80 transition" title="Klik untuk mengurutkan">
+                                <div class="flex items-center justify-between gap-1">
+                                    <span>Type</span>
+                                    <i id="sort-icon-type" class="fa-solid fa-sort text-slate-400 text-[10px]"></i>
+                                </div>
+                                <div class="col-resizer"></div>
+                            </th>
+                            <th onclick="handleSort('ref')" class="resizable-th py-3 px-3 w-36 font-mono cursor-pointer hover:bg-slate-200/80 transition" title="Klik untuk mengurutkan">
+                                <div class="flex items-center justify-between gap-1">
+                                    <span>Internal Ref</span>
+                                    <i id="sort-icon-ref" class="fa-solid fa-sort text-slate-400 text-[10px]"></i>
+                                </div>
+                                <div class="col-resizer"></div>
+                            </th>
+                            <th onclick="handleSort('name')" class="resizable-th py-3 px-3 w-80 font-bold text-blue-900 bg-blue-50/80 border-x border-blue-200 cursor-pointer hover:bg-blue-100/80 transition" title="Klik untuk mengurutkan">
+                                <div class="flex items-center justify-between gap-1">
+                                    <span><i class="fa-solid fa-star text-amber-500 mr-1"></i>Name</span>
+                                    <i id="sort-icon-name" class="fa-solid fa-sort text-blue-400 text-[10px]"></i>
+                                </div>
+                                <div class="col-resizer"></div>
+                            </th>
+                            <th onclick="handleSort('uom')" class="resizable-th py-3 px-3 w-28 cursor-pointer hover:bg-slate-200/80 transition" title="Klik untuk mengurutkan">
+                                <div class="flex items-center justify-between gap-1">
+                                    <span>Unit of Measure</span>
+                                    <i id="sort-icon-uom" class="fa-solid fa-sort text-slate-400 text-[10px]"></i>
+                                </div>
+                                <div class="col-resizer"></div>
+                            </th>
+                            <th onclick="handleSort('valuation')" class="resizable-th py-3 px-3 w-52 cursor-pointer hover:bg-slate-200/80 transition" title="Klik untuk mengurutkan">
+                                <div class="flex items-center justify-between gap-1">
+                                    <span>Valuation / Category</span>
+                                    <i id="sort-icon-valuation" class="fa-solid fa-sort text-slate-400 text-[10px]"></i>
+                                </div>
+                                <div class="col-resizer"></div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="masterTableBody" class="divide-y divide-slate-200 text-slate-700 font-medium">
+                        <!-- Clean Master Data Rows populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Modal: Pengaturan API Key Gemini -->
+    <div id="apiKeyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+            <div class="bg-slate-900 text-white p-4 flex items-center justify-between border-b border-slate-800">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-key"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-sm">Pengaturan API Key Gemini AI</h3>
+                        <p class="text-[11px] text-slate-400">Diperlukan untuk menjalankan Mode Pencarian 2 & 3</p>
+                    </div>
+                </div>
+                <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-4">
+                <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-xs text-emerald-900 space-y-1.5">
+                    <p class="font-bold flex items-center gap-1.5 text-emerald-800">
+                        <i class="fa-solid fa-circle-check text-emerald-600"></i> Status API Key Aktif
+                    </p>
+                    <p class="text-[11px] text-emerald-700 leading-relaxed">
+                        API Key Gemini dari Anda telah berhasil terpasang dan tersimpan di penyimpanan browser secara lokal.
+                    </p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        API Key Gemini AI:
+                    </label>
+                    <input type="text" id="apiKeyInput" placeholder="Masukkan API Key Google Gemini..."
+                        class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition">
+                </div>
+
+                <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                    <button onclick="resetDefaultApiKey()" class="text-slate-500 hover:text-slate-800 underline font-medium">
+                        Gunakan Key Default
+                    </button>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="closeApiKeyModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition">
+                            Batal
+                        </button>
+                        <button onclick="saveApiKey()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-md shadow-emerald-600/30">
+                            Simpan Key
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Ganti Link Google Sheet -->
+    <div id="linkModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+            <div class="bg-slate-900 text-white p-4 flex items-center justify-between border-b border-slate-800">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-file-csv"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-sm">Pengaturan Link Google Sheet</h3>
+                        <p class="text-[11px] text-slate-400">Tautkan CSV Publik Google Sheet Master Produk</p>
+                    </div>
+                </div>
+                <button onclick="closeLinkModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-4">
+                <div class="bg-blue-50 border border-blue-200 p-3 rounded-xl text-xs text-blue-900 space-y-1.5">
+                    <p class="font-bold flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-info text-blue-600"></i> Cara Mengambil Link CSV Google Sheet:
+                    </p>
+                    <ol class="list-decimal list-inside space-y-0.5 text-[11px] text-blue-800 pl-1 leading-relaxed">
+                        <li>Buka Google Sheet Master Produk Anda.</li>
+                        <li>Klik <b>File</b> &rarr; <b>Bagikan (Share)</b> &rarr; <b>Publikasikan ke web (Publish to web)</b>.</li>
+                        <li>Pilih Sheet Master, ganti format menjadi <b>Nilai yang dipisahkan koma (.csv)</b>.</li>
+                        <li>Klik <b>Publikasikan</b>, lalu salin tautannya dan tempelkan di bawah.</li>
+                    </ol>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        URL CSV Google Sheet:
+                    </label>
+                    <input type="text" id="gsheetUrlInput" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv"
+                        class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition">
+                </div>
+
+                <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                    <button onclick="resetDefaultSheetUrl()" class="text-slate-500 hover:text-slate-800 underline font-medium">
+                        Gunakan Link Default
+                    </button>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="closeLinkModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition">
+                            Batal
+                        </button>
+                        <button onclick="saveAndSyncSheetUrl()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-md shadow-blue-600/30">
+                            Simpan & Sinkronkan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // API KEY Gemini (Opsional: Jika kosong, lingkungan Canvas akan otomatis menyediakan runtime key)
+        const DEFAULT_GEMINI_API_KEY = "";
+        let currentGeminiApiKey = localStorage.getItem('gemini_api_key') || DEFAULT_GEMINI_API_KEY;
+
+        // Embedded Default Google Sheet CSV Link (Converted to CSV Export stream)
+        const DEFAULT_GSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1fZk2-dTcUs5m7fY1KKVw8mYZzj5iHh_r9ySQ7hDFlvA/export?format=csv";
+        let currentGSheetUrl = localStorage.getItem('custom_gsheet_url') || DEFAULT_GSHEET_CSV_URL;
+
+        // Clean Sample Master Product Dataset (Fallback)
+        const cleanSampleProductData = [
+            { row: 2, category: "Alat ukur", type: "Storable Product", ref: "QA-T10-0042", name: "10 A MICRO-OHMMETER C.A 6255 CHAUVIN ARNOUX", uom: "Units", valuation: "502.500001 Biaya Tools Produksi" },
+            { row: 3, category: "IT", type: "Consumable", ref: "IT-B30-0001", name: "1 SET CLUTCH GEAR PRINTER EPSON L3110 L5190", uom: "Pcs", valuation: "605.000002 Biaya Peralatan Kantor" },
+            { row: 4, category: "Peralatan IT", type: "Storable Product", ref: "IT-A05-0089", name: "1 SET PC RAKITAN DESKTOP (include Monitor, Keyboard, Mouse)", uom: "Set", valuation: "18.900099 Transaksi Aktiva Tetap" }
+        ];
+
+        let activeProducts = [];
+        let currentDisplayedProducts = [];
+        let highlightedRowIndex = null;
+        let selectedMode = 1; // Default Mode 1
+
+        // Lazy Rendering / Virtualization Chunk Limits
+        const RENDER_CHUNK_SIZE = 100;
+        let currentlyRenderedLimit = RENDER_CHUNK_SIZE;
+
+        // Table Sorting State
+        let currentSortColumn = null;
+        let currentSortDir = 'asc';
+
+        // Custom Toast Notification System
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-emerald-900 border-emerald-700 text-emerald-100' :
+                           type === 'error' ? 'bg-rose-900 border-rose-700 text-rose-100' :
+                           'bg-slate-900 border-slate-700 text-slate-100';
+            const icon = type === 'success' ? 'fa-circle-check text-emerald-400' :
+                         type === 'error' ? 'fa-circle-exclamation text-rose-400' :
+                         'fa-circle-info text-blue-400';
+
+            toast.className = `${bgClass} border px-4 py-2.5 rounded-xl shadow-xl text-xs font-medium flex items-center gap-2.5 pointer-events-auto animate-toast min-w-[250px]`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icon} text-sm shrink-0"></i>
+                <span class="flex-1">${escapeHtml(message)}</span>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // --- INDEXEDDB STORAGE SYSTEM (INSTANT LOAD) ---
+        const DB_NAME = 'MasterProductAppDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'products_store';
+
+        function openIndexedDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME);
+                    }
+                };
+                request.onsuccess = (e) => resolve(e.target.result);
+                request.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        async function saveProductsToCache(products) {
+            try {
+                const db = await openIndexedDB();
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.put(products, 'cached_products');
+                store.put(new Date().toISOString(), 'last_sync_time');
+            } catch (err) {
+                console.warn("Gagal menyimpan ke cache lokal:", err);
+            }
+        }
+
+        async function getCachedProducts() {
+            try {
+                const db = await openIndexedDB();
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const productsReq = store.get('cached_products');
+                const syncTimeReq = store.get('last_sync_time');
+
+                return new Promise((resolve) => {
+                    tx.oncomplete = () => {
+                        resolve({
+                            products: productsReq.result || null,
+                            lastSync: syncTimeReq.result || null
+                        });
+                    };
+                    tx.onerror = () => resolve({ products: null, lastSync: null });
+                });
+            } catch (err) {
+                return { products: null, lastSync: null };
+            }
+        }
+
+        window.onload = async function() {
+            initResizableColumns();
+
+            // 1. Muat instan dari IndexedDB Cache lokal
+            const cached = await getCachedProducts();
+
+            if (cached.products && cached.products.length > 0) {
+                activeProducts = cached.products;
+                resetAndRenderTable(activeProducts);
+                
+                const syncDate = cached.lastSync ? new Date(cached.lastSync).toLocaleString('id-ID') : 'Lokal';
+                updateConnectionStatus(`Lokal: ${activeProducts.length.toLocaleString('id-ID')} Produk (${syncDate})`, false);
+            } else {
+                syncGoogleSheetData(false);
+            }
+        };
+
+        function initResizableColumns() {
+            const table = document.getElementById('masterTable');
+            if (!table) return;
+
+            const resizers = table.querySelectorAll('.col-resizer');
+            let currentTh = null;
+            let startX = 0;
+            let startWidth = 0;
+
+            resizers.forEach(resizer => {
+                resizer.addEventListener('click', (e) => e.stopPropagation()); // Prevent header click sort trigger
+                
+                resizer.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    currentTh = resizer.parentElement;
+                    startX = e.pageX;
+                    startWidth = currentTh.offsetWidth;
+                    resizer.classList.add('resizing');
+
+                    const onMouseMove = (moveEvent) => {
+                        if (currentTh) {
+                            const newWidth = Math.max(50, startWidth + (moveEvent.pageX - startX));
+                            currentTh.style.width = newWidth + 'px';
+                        }
+                    };
+
+                    const onMouseUp = () => {
+                        if (resizer) resizer.classList.remove('resizing');
+                        document.removeEventListener('mousemove', onMouseMove);
+                        document.removeEventListener('mouseup', onMouseUp);
+                        currentTh = null;
+                    };
+
+                    document.addEventListener('mousemove', onMouseMove);
+                    document.addEventListener('mouseup', onMouseUp);
+                });
+            });
+        }
+
+        function updateConnectionStatus(text, isSyncing = false) {
+            const statusText = document.getElementById('connectionText');
+            const dot = document.getElementById('statusIndicatorDot');
+            if (statusText) statusText.innerText = text;
+            
+            if (dot) {
+                if (isSyncing) {
+                    dot.className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
+                } else {
+                    dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+                }
+            }
+        }
+
+        function getDirectCsvUrl(url) {
+            if (!url) return url;
+            const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+            if (match && match[1] && !url.includes('/pub?')) {
+                return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv`;
+            }
+            return url;
+        }
+
+        function syncGoogleSheetData(forcedByUser = false) {
+            const syncIcon = document.getElementById('syncIcon');
+            if (syncIcon) syncIcon.classList.add('animate-spin');
+
+            updateConnectionStatus("Menyinkronkan dari Google Sheet...", true);
+
+            const fetchUrl = getDirectCsvUrl(currentGSheetUrl);
+
+            fetch(fetchUrl)
+                .then(res => {
+                    if (!res.ok) throw new Error("Status HTTP " + res.status);
+                    return res.text();
+                })
+                .then(csvText => {
+                    Papa.parse(csvText, {
+                        complete: async function(results) {
+                            convertParsedCsvToMaster(results.data);
+                            
+                            await saveProductsToCache(activeProducts);
+
+                            if (syncIcon) syncIcon.classList.remove('animate-spin');
+                            const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                            updateConnectionStatus(`Tersinkron (${activeProducts.length.toLocaleString('id-ID')} Produk - ${timeStr})`, false);
+
+                            if (forcedByUser) {
+                                showToast(`Berhasil menyinkronkan ${activeProducts.length.toLocaleString('id-ID')} data produk dari Google Sheet!`, 'success');
+                            }
+                        }
+                    });
+                })
+                .catch(err => {
+                    console.log("Gagal menyinkronkan:", err.message);
+                    if (syncIcon) syncIcon.classList.remove('animate-spin');
+                    
+                    if (activeProducts.length === 0) {
+                        activeProducts = [...cleanSampleProductData];
+                        resetAndRenderTable(activeProducts);
+                    }
+                    
+                    updateConnectionStatus(`Offline (${activeProducts.length.toLocaleString('id-ID')} Produk)`, false);
+                    if (forcedByUser) {
+                        showToast("Gagal terhubung ke Google Sheet. Memakai data lokal yang tersimpan.", "error");
+                    }
+                });
+        }
+
+        function convertParsedCsvToMaster(rows) {
+            if (!rows || rows.length < 2) return;
+
+            const parsedList = [];
+            for (let i = 1; i < rows.length; i++) {
+                const r = rows[i];
+                if (r.length >= 4 && r[3] && String(r[3]).trim() !== "") {
+                    parsedList.push({
+                        row: i + 1,
+                        category: r[0] || "-",
+                        type: r[1] || "-",
+                        ref: r[2] || "-",
+                        name: String(r[3]).trim(),
+                        uom: r[4] || "-",
+                        valuation: r[5] || "-"
+                    });
+                }
+            }
+
+            if (parsedList.length > 0) {
+                activeProducts = parsedList;
+                resetAndRenderTable(activeProducts);
+            }
+        }
+
+        function resetAndRenderTable(data, updateDisplayedState = true) {
+            if (updateDisplayedState) {
+                currentDisplayedProducts = [...data];
+            }
+            currentlyRenderedLimit = RENDER_CHUNK_SIZE;
+            renderMasterTable(currentDisplayedProducts, false);
+        }
+
+        function renderMasterTable(data, appendMode = false) {
+            const tbody = document.getElementById('masterTableBody');
+            
+            if (!appendMode) {
+                tbody.innerHTML = '';
+            }
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-12 text-slate-400 font-medium">
+                            Tidak ada data produk yang ditemukan.
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('rowCountBadge').innerText = `0 Produk`;
+                return;
+            }
+
+            const startIndex = appendMode ? (currentlyRenderedLimit - RENDER_CHUNK_SIZE) : 0;
+            const chunkToRender = data.slice(startIndex, currentlyRenderedLimit);
+
+            const fragment = document.createDocumentFragment();
+
+            chunkToRender.forEach((item) => {
+                const tr = document.createElement('tr');
+                tr.id = `row-item-${item.row}`;
+                tr.className = "hover:bg-blue-50/60 transition cursor-pointer border-b border-slate-200/80 group";
+                
+                tr.onclick = () => highlightRowInTable(item.row);
+
+                const aiBadgeHtml = item.aiMatch ? `
+                    <div class="mt-1 flex items-center gap-1.5 flex-wrap">
+                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            ${item.aiMatch}% Match
+                        </span>
+                        ${item.aiReason ? `<span class="text-[10px] text-slate-500 italic">💡 ${escapeHtml(item.aiReason)}</span>` : ''}
+                    </div>
+                ` : '';
+
+                tr.innerHTML = `
+                    <td class="py-2.5 px-3 text-center font-mono text-slate-400 font-semibold truncate">
+                        <div class="flex items-center justify-center gap-1">
+                            <span>${item.row}</span>
+                            <button onclick="copyToClipboard('${item.row}', event)" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-blue-600 transition p-0.5" title="Salin Nomor Baris">
+                                <i class="fa-regular fa-copy text-[10px]"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="py-2.5 px-3 font-medium text-slate-700 truncate">
+                        <div class="flex items-center justify-between gap-1 overflow-hidden">
+                            <span class="truncate" title="${escapeHtml(item.category)}">${escapeHtml(item.category)}</span>
+                            <button onclick="copyToClipboard('${escapeHtml(item.category)}', event)" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-blue-600 transition p-0.5 shrink-0" title="Salin Category">
+                                <i class="fa-regular fa-copy text-[10px]"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="py-2.5 px-3 text-slate-500 truncate">
+                        <div class="flex items-center justify-between gap-1 overflow-hidden">
+                            <span class="truncate" title="${escapeHtml(item.type)}">${escapeHtml(item.type)}</span>
+                            <button onclick="copyToClipboard('${escapeHtml(item.type)}', event)" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-blue-600 transition p-0.5 shrink-0" title="Salin Type">
+                                <i class="fa-regular fa-copy text-[10px]"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="py-2.5 px-3 font-mono text-slate-600 font-semibold truncate">
+                        <div class="flex items-center justify-between gap-1 overflow-hidden">
+                            <span class="truncate" title="${escapeHtml(item.ref)}">${escapeHtml(item.ref)}</span>
+                            <button onclick="copyToClipboard('${escapeHtml(item.ref)}', event)" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-blue-600 transition p-0.5 shrink-0" title="Salin Internal Ref">
+                                <i class="fa-regular fa-copy text-[10px]"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="py-2.5 px-3 font-bold text-slate-900 bg-blue-50/40 border-x border-blue-100/80">
+                        <div class="flex items-start justify-between gap-1.5">
+                            <div class="min-w-0 flex-1">
+                                <div class="break-words">${escapeHtml(item.name)}</div>
+                                ${aiBadgeHtml}
+                            </div>
+                            <button onclick="copyToClipboard('${escapeHtml(item.name)}', event)" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-blue-600 transition p-0.5 shrink-0 mt-0.5" title="Salin Nama Produk">
+                                <i class="fa-regular fa-copy text-[11px]"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="py-2.5 px-3 text-slate-600 truncate">
+                        <div class="flex items-center justify-between gap-1 overflow-hidden">
+                            <span class="truncate" title="${escapeHtml(item.uom)}">${escapeHtml(item.uom)}</span>
+                            <button onclick="copyToClipboard('${escapeHtml(item.uom)}', event)" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-blue-600 transition p-0.5 shrink-0" title="Salin UOM">
+                                <i class="fa-regular fa-copy text-[10px]"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="py-2.5 px-3 text-slate-500 text-[11px] truncate">
+                        <div class="flex items-center justify-between gap-1 overflow-hidden">
+                            <span class="truncate" title="${escapeHtml(item.valuation)}">${escapeHtml(item.valuation)}</span>
+                            <button onclick="copyToClipboard('${escapeHtml(item.valuation)}', event)" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-blue-600 transition p-0.5 shrink-0" title="Salin Valuation">
+                                <i class="fa-regular fa-copy text-[10px]"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                fragment.appendChild(tr);
+            });
+
+            tbody.appendChild(fragment);
+
+            const displayedCount = Math.min(currentlyRenderedLimit, data.length);
+            document.getElementById('rowCountBadge').innerText = `Tampil ${displayedCount.toLocaleString('id-ID')} dari ${data.length.toLocaleString('id-ID')} Produk`;
+        }
+
+        function handleTableScroll() {
+            const container = document.getElementById('tableScrollContainer');
+            if (!container) return;
+
+            if (container.scrollTop + container.clientHeight >= container.scrollHeight - 150) {
+                if (currentlyRenderedLimit < currentDisplayedProducts.length) {
+                    currentlyRenderedLimit += RENDER_CHUNK_SIZE;
+                    renderMasterTable(currentDisplayedProducts, true);
+                }
+            }
+        }
+
+        function handleSort(colKey) {
+            if (currentSortColumn === colKey) {
+                currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortColumn = colKey;
+                currentSortDir = 'asc';
+            }
+
+            updateSortIconsUI();
+            applySortAndRender();
+        }
+
+        function updateSortIconsUI() {
+            const columns = ['row', 'category', 'type', 'ref', 'name', 'uom', 'valuation'];
+            columns.forEach(col => {
+                const icon = document.getElementById(`sort-icon-${col}`);
+                if (!icon) return;
+                
+                if (col === currentSortColumn) {
+                    icon.className = currentSortDir === 'asc' 
+                        ? 'fa-solid fa-sort-up text-blue-600 text-[10px]' 
+                        : 'fa-solid fa-sort-down text-blue-600 text-[10px]';
+                } else {
+                    icon.className = 'fa-solid fa-sort text-slate-400 text-[10px]';
+                }
+            });
+        }
+
+        function applySortAndRender() {
+            if (!currentSortColumn) return;
+
+            currentDisplayedProducts.sort((a, b) => {
+                let valA = a[currentSortColumn];
+                let valB = b[currentSortColumn];
+
+                if (typeof valA === 'number' && typeof valB === 'number') {
+                    return currentSortDir === 'asc' ? valA - valB : valB - valA;
+                }
+
+                valA = String(valA || '').toLowerCase();
+                valB = String(valB || '').toLowerCase();
+
+                if (valA < valB) return currentSortDir === 'asc' ? -1 : 1;
+                if (valA > valB) return currentSortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            resetAndRenderTable(currentDisplayedProducts, false);
+        }
+
+        function selectSearchMode(modeNum) {
+            selectedMode = modeNum;
+            for (let i = 1; i <= 3; i++) {
+                const btn = document.getElementById(`modeBtn${i}`);
+                if (!btn) continue;
+                if (i === modeNum) {
+                    btn.className = "p-2 rounded-xl border text-left transition flex items-center gap-2 bg-blue-50 border-blue-500 text-blue-900 shadow-sm ring-1 ring-blue-500";
+                } else {
+                    btn.className = "p-2 rounded-xl border border-slate-200 text-left transition flex items-center gap-2 bg-slate-50 text-slate-700 hover:border-slate-300";
+                }
+            }
+        }
+
+        function highlightRowInTable(rowNum) {
+            if (highlightedRowIndex) {
+                const prevEl = document.getElementById(`row-item-${highlightedRowIndex}`);
+                if (prevEl) prevEl.classList.remove('bg-amber-100', 'ring-2', 'ring-amber-400');
+            }
+
+            highlightedRowIndex = rowNum;
+            const targetEl = document.getElementById(`row-item-${rowNum}`);
+            if (targetEl) {
+                targetEl.classList.add('bg-amber-100', 'ring-2', 'ring-amber-400');
+                targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function resetSearchFilter() {
+            document.getElementById('aiSearchQuery').value = '';
+            document.getElementById('recommendationsSection').classList.add('hidden');
+            document.getElementById('aiErrorBox').classList.add('hidden');
+            resetAndRenderTable(activeProducts);
+        }
+
+        async function executeSearch() {
+            const query = document.getElementById('aiSearchQuery').value.trim();
+            if (!query) {
+                resetSearchFilter();
+                return;
+            }
+
+            const loadingBox = document.getElementById('aiLoading');
+            const errorBox = document.getElementById('aiErrorBox');
+            const recSection = document.getElementById('recommendationsSection');
+            const recList = document.getElementById('recommendationsList');
+            const statsBadge = document.getElementById('searchStatsBadge');
+
+            errorBox.classList.add('hidden');
+            recSection.classList.add('hidden');
+            recList.innerHTML = '';
+
+            // MODE 1: Fast String Local Match across Name, Category, UOM, Ref, Valuation with Wildcard (%)
+            if (selectedMode === 1) {
+                const startTime = performance.now();
+                let terms = [];
+                
+                if (query.includes('%')) {
+                    terms = query.split('%').map(t => t.trim().toLowerCase()).filter(t => t.length > 0);
+                } else {
+                    terms = query.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+                }
+                
+                const matches = activeProducts.filter(item => {
+                    // Combine all row text attributes to search across name, category, uom, ref, type, valuation
+                    const searchableText = `${item.category} ${item.type} ${item.ref} ${item.name} ${item.uom} ${item.valuation}`.toLowerCase();
+                    return terms.every(term => searchableText.includes(term));
+                });
+
+                const endTime = performance.now();
+                statsBadge.innerText = `${(endTime - startTime).toFixed(1)}ms | Filter Cepat (${matches.length} produk ditemukan)`;
+
+                recSection.classList.add('hidden');
+                resetAndRenderTable(matches);
+                return;
+            }
+
+            // MODE 2 & MODE 3: Gemini AI Semantic Search
+            loadingBox.classList.remove('hidden');
+            document.getElementById('loadingTitle').innerText = selectedMode === 2 ? "Mencari Kemiripan Makna AI..." : "Memproses AI Multi-language...";
+            document.getElementById('loadingDesc').innerText = "Gemini Flash AI sedang memadankan data terdekat...";
+
+            const isBilingual = (selectedMode === 3);
+            const candidates = preFilterCandidates(query, activeProducts, 35, isBilingual);
+
+            if (candidates.length === 0) {
+                loadingBox.classList.add('hidden');
+                resetAndRenderTable([]);
+                return;
+            }
+
+            try {
+                const startTime = performance.now();
+                const recommendations = await callGeminiReRank(query, candidates, isBilingual);
+                const endTime = performance.now();
+
+                loadingBox.classList.add('hidden');
+                statsBadge.innerText = `${(endTime - startTime).toFixed(0)}ms | Gemini AI`;
+
+                const recRowsMap = new Map();
+                if (Array.isArray(recommendations)) {
+                    recommendations.forEach(r => recRowsMap.set(r.row, r));
+                }
+
+                const recItems = activeProducts
+                    .filter(p => recRowsMap.has(p.row))
+                    .map(p => ({
+                        ...p,
+                        aiMatch: recRowsMap.get(p.row)?.match_percentage,
+                        aiReason: recRowsMap.get(p.row)?.reason
+                    }));
+
+                // Render Top Recommendation Cards
+                if (recItems.length > 0) {
+                    recSection.classList.remove('hidden');
+                    recList.innerHTML = '';
+                    
+                    recItems.slice(0, 5).forEach((recItem, idx) => {
+                        const card = document.createElement('div');
+                        card.className = "bg-slate-50 border border-slate-200 hover:border-blue-400 p-2.5 rounded-xl transition cursor-pointer flex flex-col justify-between shadow-sm hover:shadow-md";
+                        card.onclick = () => highlightRowInTable(recItem.row);
+                        card.innerHTML = `
+                            <div>
+                                <div class="flex items-center justify-between gap-1 mb-1">
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
+                                        #${idx + 1} (Baris ${recItem.row})
+                                    </span>
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        ${recItem.aiMatch || 90}% Match
+                                    </span>
+                                </div>
+                                <div class="text-xs font-bold text-slate-800 line-clamp-2 title="${escapeHtml(recItem.name)}">
+                                    ${escapeHtml(recItem.name)}
+                                </div>
+                                ${recItem.aiReason ? `<p class="text-[10px] text-slate-500 italic mt-1 line-clamp-2">💡 ${escapeHtml(recItem.aiReason)}</p>` : ''}
+                            </div>
+                            <div class="mt-2 pt-1.5 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-500">
+                                <span>Ref: ${escapeHtml(recItem.ref)}</span>
+                                <button onclick="copyToClipboard('${escapeHtml(recItem.name)}', event)" class="hover:text-blue-600 font-medium">
+                                    <i class="fa-regular fa-copy mr-0.5"></i> Salin
+                                </button>
+                            </div>
+                        `;
+                        recList.appendChild(card);
+                    });
+                }
+
+                resetAndRenderTable(recItems);
+
+                if (recItems.length > 0) {
+                    highlightRowInTable(recItems[0].row);
+                }
+            } catch (err) {
+                loadingBox.classList.add('hidden');
+                errorBox.classList.remove('hidden');
+                document.getElementById('aiErrorMessage').innerText = err.message || "Gagal memproses rekomendasi AI.";
+            }
+        }
+
+        function preFilterCandidates(query, products, maxCandidates, isBilingual) {
+            const queryLower = query.toLowerCase();
+            const terms = queryLower.split(/\s+/).filter(t => t.length > 0);
+
+            let expandedTerms = [...terms];
+
+            if (isBilingual) {
+                const dict = {
+                    "siku": ["elbow"],
+                    "elbow": ["siku"],
+                    "kabel": ["cable", "wire"],
+                    "cable": ["kabel"],
+                    "tembaga": ["copper"],
+                    "copper": ["tembaga"],
+                    "alat": ["tool", "meter"],
+                    "ukur": ["meter", "tester", "ohmmeter"],
+                    "mesin": ["machine"],
+                    "rantai": ["chain"],
+                    "sambungan": ["connector", "fitting"],
+                    "inc": ["\"", "inch"],
+                    "inch": ["\"", "inc"],
+                    "in": ["\""]
+                };
+
+                terms.forEach(t => {
+                    if (dict[t]) expandedTerms = expandedTerms.concat(dict[t]);
+                });
+            }
+
+            const scored = products.map(item => {
+                const searchableText = `${item.category} ${item.type} ${item.ref} ${item.name} ${item.uom} ${item.valuation}`.toLowerCase();
+                let score = 0;
+
+                expandedTerms.forEach(term => {
+                    if (searchableText.includes(term)) {
+                        score += term.length > 3 ? 3 : 1.5;
+                    }
+                });
+
+                return { item, score };
+            });
+
+            scored.sort((a, b) => b.score - a.score);
+
+            let topMatches = scored.filter(s => s.score > 0).map(s => s.item);
+            if (topMatches.length < 5) {
+                topMatches = products.slice(0, maxCandidates);
+            } else {
+                topMatches = topMatches.slice(0, maxCandidates);
+            }
+
+            return topMatches;
+        }
+
+        async function callGeminiReRank(userQuery, candidateItems, isBilingual) {
+            const apiKey = (currentGeminiApiKey || DEFAULT_GEMINI_API_KEY || "").trim();
+            // Menggunakan model Gemini 3 Flash Preview resmi
+            const modelsToTry = ["gemini-3-flash-preview", "gemini-3-flash"];
+
+            const candidateListText = candidateItems.map(c => `[Baris ${c.row}] Ref: "${c.ref}" | Name: "${c.name}"`).join("\n");
+
+            let promptInstruction = "";
+            if (!isBilingual) {
+                promptInstruction = `MODE: EKSKLUSIF / DIRECT (Tanpa Penerjemahan Multilanguage).
+Pilih 5 produk yang paling cocok secara ketat sesuai kueri tanpa menerjemahkan bahasa.`;
+            } else {
+                promptInstruction = `MODE: MULTI-LANGUAGE (Indonesia <-> Inggris).
+Pahami istilah dwibahasa (contoh: "siku" = "elbow", "kabel tembaga" = "copper cable", "3 inc" = "3\" DN80"). Pilih 5 produk paling relevan secara makna.`;
+            }
+
+            const systemPrompt = `Kamu adalah mesin pencari Master Produk pintar.
+${promptInstruction}
+
+Aturan:
+1. Kembalikan HANYA array JSON valid tanpa format markdown \`\`\`json.
+
+Format Output JSON:
+[
+  {
+    "row": nomor_baris,
+    "product_name": "Nama Produk dari Sheet",
+    "match_percentage": 95,
+    "reason": "Penjelasan singkat alasan relevansi produk"
+  }
+]`;
+
+            const userPrompt = `Kueri Pengguna: "${userQuery}"\n\nDAFTAR KANDIDAT PRODUK:\n${candidateListText}`;
+
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    temperature: 0.1,
+                    responseMimeType: "application/json"
+                }
+            };
+
+            let response;
+            let lastError = null;
+
+            for (const model of modelsToTry) {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+                let retries = 2;
+                let delay = 1000;
+
+                while (retries > 0) {
+                    try {
+                        response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (response.status === 429) {
+                            await new Promise(res => setTimeout(res, delay));
+                            delay *= 2;
+                            retries--;
+                            continue;
+                        }
+
+                        if (!response.ok) {
+                            const errData = await response.json().catch(() => ({}));
+                            throw new Error(errData.error?.message || `HTTP ${response.status}`);
+                        }
+
+                        const result = await response.json();
+                        const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                        if (!textResponse) throw new Error("Respon AI Gemini kosong.");
+
+                        try {
+                            return JSON.parse(textResponse);
+                        } catch (e) {
+                            throw new Error("Gagal menguraikan format respon JSON dari AI.");
+                        }
+                    } catch (e) {
+                        lastError = e;
+                        if (retries <= 1) break;
+                        await new Promise(res => setTimeout(res, delay));
+                        delay *= 2;
+                        retries--;
+                    }
+                }
+            }
+
+            throw lastError || new Error("Gagal memanggil API Gemini.");
+        }
+
+        // API Key Modal Handlers
+        function openApiKeyModal() {
+            document.getElementById('apiKeyInput').value = currentGeminiApiKey;
+            document.getElementById('apiKeyModal').classList.remove('hidden');
+        }
+
+        function closeApiKeyModal() {
+            document.getElementById('apiKeyModal').classList.add('hidden');
+        }
+
+        function saveApiKey() {
+            const keyVal = document.getElementById('apiKeyInput').value.trim();
+            if (!keyVal) {
+                showToast("API Key tidak boleh kosong!", "error");
+                return;
+            }
+            currentGeminiApiKey = keyVal;
+            localStorage.setItem('gemini_api_key', currentGeminiApiKey);
+            closeApiKeyModal();
+            showToast("API Key Gemini berhasil disimpan!", "success");
+        }
+
+        function resetDefaultApiKey() {
+            currentGeminiApiKey = DEFAULT_GEMINI_API_KEY;
+            localStorage.removeItem('gemini_api_key');
+            document.getElementById('apiKeyInput').value = DEFAULT_GEMINI_API_KEY;
+            showToast("API Key dikembalikan ke default.", "info");
+        }
+
+        // Modal Handlers for Google Sheet URL
+        function openLinkModal() {
+            document.getElementById('gsheetUrlInput').value = currentGSheetUrl;
+            document.getElementById('linkModal').classList.remove('hidden');
+        }
+
+        function closeLinkModal() {
+            document.getElementById('linkModal').classList.add('hidden');
+        }
+
+        function saveAndSyncSheetUrl() {
+            let newUrl = document.getElementById('gsheetUrlInput').value.trim();
+            if (!newUrl) return;
+
+            currentGSheetUrl = getDirectCsvUrl(newUrl);
+            localStorage.setItem('custom_gsheet_url', currentGSheetUrl);
+            closeLinkModal();
+            syncGoogleSheetData(true);
+        }
+
+        function resetDefaultSheetUrl() {
+            currentGSheetUrl = DEFAULT_GSHEET_CSV_URL;
+            localStorage.removeItem('custom_gsheet_url');
+            document.getElementById('gsheetUrlInput').value = DEFAULT_GSHEET_CSV_URL;
+            showToast("Link Google Sheet dikembalikan ke default.", "info");
+        }
+
+        function copyToClipboard(text, event) {
+            if (event) event.stopPropagation();
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            showToast("Nama produk berhasil disalin: " + text, "success");
+        }
+
+        function escapeHtml(text) {
+            if (!text) return "";
+            return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+    </script>
+</body>
+</html>
