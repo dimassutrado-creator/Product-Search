@@ -45,10 +45,8 @@
 </head>
 <body class="bg-slate-100 text-slate-800 h-screen flex flex-col overflow-hidden">
 
-    <!-- Toast Notification Container -->
     <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Header Bar -->
     <header class="bg-slate-900 text-white border-b border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between shrink-0 shadow-md gap-2">
         <div class="flex items-center space-x-3">
             <div class="bg-blue-600 text-white p-2 rounded-xl font-bold flex items-center justify-center w-10 h-10 shadow-lg shadow-blue-600/30">
@@ -90,10 +88,7 @@
         </div>
     </header>
 
-    <!-- Unified Single Main Screen -->
     <main class="flex-1 flex flex-col min-w-0 bg-slate-100 overflow-hidden p-4 space-y-3">
-
-        <!-- Top Box: Search Controls & 2 Options Selector -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3 shrink-0">
             
             <!-- Mode Selection Bar (2 Options) -->
@@ -109,7 +104,7 @@
                         <div class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">1</div>
                         <div class="min-w-0">
                             <div class="text-xs font-bold text-slate-900 truncate">Filter Cepat</div>
-                            <div class="text-[10px] text-slate-500 truncate">Pencarian kata persis (Pemisah ganda: %)</div>
+                            <div class="text-[10px] text-slate-500 truncate">Pencarian kata presisi lokal (Pemisah ganda: %)</div>
                         </div>
                     </button>
 
@@ -131,7 +126,7 @@
                     <input type="text" id="aiSearchQuery" 
                         oninput="handleSearchInput()"
                         onkeydown="if(event.key==='Enter') executeSearch()"
-                        placeholder="Ketik kata pencarian (Mode 1 gunakan % untuk multi-kata, cth: nfa%jadi)" 
+                        placeholder="Ketik kata pencarian (Contoh: jadi %nfa, siku cpvc 3 inc, kabel tembaga...)" 
                         class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition shadow-sm">
                 </div>
 
@@ -150,7 +145,7 @@
             <div id="aiLoading" class="hidden p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-center gap-3">
                 <div class="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                 <div class="text-xs">
-                    <span id="loadingTitle" class="font-bold text-blue-900">Memproses AI Multi-language...</span>
+                    <span id="loadingTitle" class="font-bold text-blue-900">Menganalisis Makna Produk...</span>
                     <span id="loadingDesc" class="text-blue-700 ml-1">Gemini AI sedang mencocokkan master data...</span>
                 </div>
             </div>
@@ -172,7 +167,7 @@
                     <span id="rowCountBadge" class="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
                         Loading...
                     </span>
-                    <span id="searchStatsBadge" class="hidden text-[10px] font-mono text-slate-500 bg-slate-200/60 px-2 py-0.5 rounded border border-slate-300 ml-1.5"></span>
+                    <span id="searchStatsBadge" class="hidden text-[10px] font-mono text-slate-500 bg-slate-200 px-2 py-0.5 rounded border border-slate-300 ml-1"></span>
                 </div>
 
                 <div class="text-[11px] text-slate-500 flex items-center gap-1.5">
@@ -183,7 +178,6 @@
                 </div>
             </div>
 
-            <!-- Master Table -->
             <div id="tableScrollContainer" onscroll="handleTableScroll()" class="flex-1 overflow-auto custom-scrollbar">
                 <table id="masterTable" class="w-full text-left text-xs border-collapse table-fixed">
                     <thead class="bg-slate-100 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200 sticky top-0 z-10 select-none">
@@ -259,7 +253,7 @@
                     </div>
                     <div>
                         <h3 class="font-bold text-sm">Pengaturan API Key Gemini AI</h3>
-                        <p class="text-[11px] text-slate-400">Diperlukan untuk menjalankan Mode Pencarian 2</p>
+                        <p class="text-[11px] text-slate-400">Diperlukan untuk menjalankan Mode Pencarian AI (Mode 2)</p>
                     </div>
                 </div>
                 <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
@@ -358,7 +352,6 @@
         </div>
     </div>
 
-    <!-- JavaScript Logic -->
     <script>
         // API KEY Gemini (Opsional: Jika kosong, lingkungan Canvas akan otomatis menyediakan runtime key)
         const DEFAULT_GEMINI_API_KEY = "";
@@ -802,7 +795,6 @@
 
         function selectSearchMode(modeNum) {
             selectedMode = modeNum;
-            // Now only 2 modes exist
             for (let i = 1; i <= 2; i++) {
                 const btn = document.getElementById(`modeBtn${i}`);
                 if (!btn) continue;
@@ -844,16 +836,13 @@
             document.getElementById('aiSearchQuery').value = '';
             document.getElementById('aiErrorBox').classList.add('hidden');
             const statsBadge = document.getElementById('searchStatsBadge');
-            if (statsBadge) {
-                statsBadge.classList.add('hidden');
-                statsBadge.innerText = '';
-            }
+            if (statsBadge) statsBadge.classList.add('hidden');
             resetAndRenderTable(activeProducts);
         }
 
         async function executeSearch() {
-            const query = document.getElementById('aiSearchQuery').value.trim();
-            if (!query) {
+            const rawQuery = document.getElementById('aiSearchQuery').value;
+            if (!rawQuery.trim() && !rawQuery.includes('%')) {
                 resetSearchFilter();
                 return;
             }
@@ -868,9 +857,16 @@
             // MODE 1: Fast String Local Match
             if (selectedMode === 1) {
                 const startTime = performance.now();
+                let terms = [];
                 
-                // Pemisahan kata HANYA menggunakan "%". Spasi dianggap satu kesatuan string.
-                const terms = query.toLowerCase().split('%').map(t => t.trim()).filter(t => t.length > 0);
+                if (rawQuery.includes('%')) {
+                    // Jika ada '%', kita memecah berdasarkan '%'. 
+                    // Kita tidak melakukan .trim() pada hasil pecahan, agar "nya " (dengan spasi) tetap terbaca.
+                    terms = rawQuery.toLowerCase().split('%').filter(t => t !== '');
+                } else {
+                    // Jika tidak ada '%', perilaku default adalah memecah berdasarkan spasi.
+                    terms = rawQuery.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+                }
                 
                 const matches = activeProducts.filter(item => {
                     const searchableText = `${item.category} ${item.type} ${item.ref} ${item.name} ${item.uom} ${item.valuation}`.toLowerCase();
@@ -879,10 +875,10 @@
 
                 const endTime = performance.now();
                 if (statsBadge) {
-                    statsBadge.innerText = `${(endTime - startTime).toFixed(1)}ms | Filter Cepat (${matches.length} produk ditemukan)`;
+                    statsBadge.innerText = `${(endTime - startTime).toFixed(1)}ms | Filter Cepat (${matches.length} produk)`;
                     statsBadge.classList.remove('hidden');
                 }
-                
+
                 resetAndRenderTable(matches);
                 return;
             }
@@ -892,7 +888,9 @@
             document.getElementById('loadingTitle').innerText = "Memproses AI Multi-language...";
             document.getElementById('loadingDesc').innerText = "Gemini Flash AI sedang memadankan data terdekat...";
 
-            const candidates = preFilterCandidates(query, activeProducts, 35, true);
+            // Karena mode tinggal 2, mode AI (Mode 2) otomatis adalah Bilingual.
+            const isBilingual = true; 
+            const candidates = preFilterCandidates(rawQuery.trim(), activeProducts, 35, isBilingual);
 
             if (candidates.length === 0) {
                 loadingBox.classList.add('hidden');
@@ -902,10 +900,11 @@
 
             try {
                 const startTime = performance.now();
-                const recommendations = await callGeminiReRank(query, candidates);
+                const recommendations = await callGeminiReRank(rawQuery.trim(), candidates, isBilingual);
                 const endTime = performance.now();
 
                 loadingBox.classList.add('hidden');
+                
                 if (statsBadge) {
                     statsBadge.innerText = `${(endTime - startTime).toFixed(0)}ms | Gemini AI`;
                     statsBadge.classList.remove('hidden');
@@ -923,6 +922,9 @@
                         aiMatch: recRowsMap.get(p.row)?.match_percentage,
                         aiReason: recRowsMap.get(p.row)?.reason
                     }));
+
+                // Urutkan berdasarkan persen kecocokan AI
+                recItems.sort((a, b) => (b.aiMatch || 0) - (a.aiMatch || 0));
 
                 resetAndRenderTable(recItems);
 
@@ -990,7 +992,7 @@
             return topMatches;
         }
 
-        async function callGeminiReRank(userQuery, candidateItems) {
+        async function callGeminiReRank(userQuery, candidateItems, isBilingual) {
             const apiKey = (currentGeminiApiKey || DEFAULT_GEMINI_API_KEY || "").trim();
             const modelsToTry = ["gemini-3-flash-preview", "gemini-3-flash"];
 
@@ -1077,7 +1079,6 @@ Format Output JSON:
             throw lastError || new Error("Gagal memanggil API Gemini.");
         }
 
-        // API Key Modal Handlers
         function openApiKeyModal() {
             document.getElementById('apiKeyInput').value = currentGeminiApiKey;
             document.getElementById('apiKeyModal').classList.remove('hidden');
@@ -1106,7 +1107,6 @@ Format Output JSON:
             showToast("API Key dikembalikan ke default.", "info");
         }
 
-        // Modal Handlers for Google Sheet URL
         function openLinkModal() {
             document.getElementById('gsheetUrlInput').value = currentGSheetUrl;
             document.getElementById('linkModal').classList.remove('hidden');
@@ -1141,7 +1141,7 @@ Format Output JSON:
             el.select();
             document.execCommand('copy');
             document.body.removeChild(el);
-            showToast("Teks berhasil disalin: " + text, "success");
+            showToast("Nama produk berhasil disalin: " + text, "success");
         }
 
         function escapeHtml(text) {
